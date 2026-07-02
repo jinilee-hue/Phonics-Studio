@@ -1,0 +1,25 @@
+@import "tailwindcss";
+
+/* Tailwind v4 CSS-first 설정 — 별도 tailwind.config 없음. A의 lavender 시그니처 토큰 */
+@theme {
+  --color-brand-50: #f6f3ff;
+  --color-brand-100: #ece6ff;
+  --color-brand-200: #ddd2ff;
+  --color-brand-300: #c4b2fa;
+  --color-brand-400: #a78ef2;
+  --color-brand-500: #8a75e0;
+  --color-brand-600: #6f5bc8;
+  --color-brand-700: #5b4a9e;
+  --color-brand-800: #453877;
+  --color-brand-900: #2f264f;
+
+  --font-sans: "Pretendard Variable", Pretendard, system-ui, "Segoe UI",
+    "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+
+  --shadow-card: 0 4px 20px rgb(90 70 160 / 0.1);
+  --shadow-modal: 0 20px 60px rgb(30 20 70 / 0.35);
+}
+
+body {
+  @apply bg-brand-50 text-gray-900 antialiased;
+}
