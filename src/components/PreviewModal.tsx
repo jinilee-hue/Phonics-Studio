@@ -30,7 +30,19 @@ export function PreviewModal({ content, onClose }: { content: Content; onClose: 
           <p className="py-16 text-center text-red-500">{error.message}</p>
         )}
 
-        {preview && (content.kind === 'html' || content.kind === 'zip') && (
+        {/* zip(SPA)은 격리된 서브도메인 오리진에서 서빙되므로 allow-same-origin이 안전(ES모듈·localStorage·상대 fetch 필요) */}
+        {preview && content.kind === 'zip' && (
+          <iframe
+            src={preview.url}
+            sandbox="allow-scripts allow-same-origin allow-modals"
+            allow="microphone; autoplay"
+            title={content.title}
+            className="h-[60vh] w-full rounded-xl border border-brand-100 bg-white"
+          />
+        )}
+
+        {/* html(자체완결)은 플랫폼 오리진 서빙 → opaque origin 유지(allow-same-origin 금지) */}
+        {preview && content.kind === 'html' && (
           <iframe
             src={preview.url}
             sandbox="allow-scripts"
