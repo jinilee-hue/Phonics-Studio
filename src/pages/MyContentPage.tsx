@@ -80,11 +80,6 @@ export function MyContentPage() {
                   {courseLabelFor(c.courseCode) !== c.courseCode && ` · ${courseLabelFor(c.courseCode)}`}
                 </span>
               )}
-              {c.gradeBand && (
-                <span className="rounded-md bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-700">
-                  {c.gradeBand}
-                </span>
-              )}
               <span className="ml-auto flex gap-2">
                 <button
                   onClick={() => setPreview(c)}
@@ -150,7 +145,6 @@ function EditForm({ content, onClose }: { content: Content; onClose: () => void 
   const qc = useQueryClient()
   const [title, setTitle] = useState(content.title)
   const [description, setDescription] = useState(content.description)
-  const [gradeBand, setGradeBand] = useState(content.gradeBand ?? '')
   const [course, setCourse] = useState<string | null>(content.courseCode)
   const [skills, setSkills] = useState<SkillTag[]>(content.skills)
   const [analysis, setAnalysis] = useState<AnalyzeResult | null>(null)
@@ -176,7 +170,6 @@ function EditForm({ content, onClose }: { content: Content; onClose: () => void 
     onSuccess: (data) => {
       setAnalysis(data)
       if (data.confident) {
-        if (data.suggested.gradeBand) setGradeBand(data.suggested.gradeBand)
         const code = data.suggested.skillCode
         if (code) {
           // 제안 스킬을 주 스킬로 채택 (기존 선택은 보조로 유지)
@@ -195,7 +188,6 @@ function EditForm({ content, onClose }: { content: Content; onClose: () => void 
       const body: ContentUpdate = {
         title: title.trim(),
         description: description.trim(),
-        gradeBand: gradeBand.trim() || null,
         courseCode: course ?? '',
         skills,
       }
@@ -253,7 +245,7 @@ function EditForm({ content, onClose }: { content: Content; onClose: () => void 
         {analysis && (
           <span className="text-xs text-gray-500">
             확신도 {(analysis.suggested.confidence * 100).toFixed(0)}%
-            {analysis.confident ? ' · 스킬·학년대 자동 채움 완료' : ' · 낮아 미반영'}
+            {analysis.confident ? ' · 스킬 자동 채움 완료' : ' · 낮아 미반영'}
           </span>
         )}
       </div>
@@ -284,25 +276,14 @@ function EditForm({ content, onClose }: { content: Content; onClose: () => void 
         </p>
       )}
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        <label className="text-xs font-semibold text-gray-500">
-          제목
-          <input
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            className="mt-1 w-full rounded-lg border border-brand-200 px-3 py-2 text-sm font-normal text-gray-800 outline-none focus:border-brand-500"
-          />
-        </label>
-        <label className="text-xs font-semibold text-gray-500">
-          학년대 (gradeBand)
-          <input
-            value={gradeBand}
-            onChange={(e) => setGradeBand(e.target.value)}
-            placeholder="예: K-1"
-            className="mt-1 w-full rounded-lg border border-brand-200 px-3 py-2 text-sm font-normal text-gray-800 outline-none focus:border-brand-500"
-          />
-        </label>
-      </div>
+      <label className="block text-xs font-semibold text-gray-500">
+        제목
+        <input
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          className="mt-1 w-full rounded-lg border border-brand-200 px-3 py-2 text-sm font-normal text-gray-800 outline-none focus:border-brand-500"
+        />
+      </label>
       <label className="block text-xs font-semibold text-gray-500">
         설명
         <textarea

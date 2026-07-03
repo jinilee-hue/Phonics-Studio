@@ -56,11 +56,18 @@ export interface SkillOption {
   domainLabel: string
 }
 
+export interface AnalyzeSuggestion {
+  title: string | null
+  description: string | null
+  courseCode: string | null
+  skillCode: string | null
+  confidence: number
+}
+
 export interface AnalyzeResult {
   suggested: {
     title: string | null
     skillCode: string | null
-    gradeBand: string | null
     confidence: number
   }
   applied: boolean

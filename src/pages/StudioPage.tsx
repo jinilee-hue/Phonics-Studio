@@ -1,14 +1,14 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import { api } from '../api/client'
-import type { Content, SkillTag } from '../api/types'
+import type { AnalyzeSuggestion, Content, SkillTag } from '../api/types'
 import { SkillCoursePicker } from '../components/SkillCoursePicker'
 
 type FileType = 'html' | 'zip' | 'video' | 'audio'
 
 const FILE_TYPES: { value: FileType; label: string; accept: string; hint: string }[] = [
   { value: 'html', label: 'HTML', accept: '.html', hint: '단일 HTML 게임 파일' },
-  { value: 'zip', label: 'ZIP', accept: '.zip', hint: '정적 빌드(dist/out) — index.html 포함' },
+  { value: 'zip', label: 'ZIP', accept: '.zip', hint: '정적 빌드(dist/out) 후 ZIP파일로 묶어주세요' },
   { value: 'video', label: '비디오', accept: '.mp4,.webm', hint: 'mp4 · webm' },
   { value: 'audio', label: '오디오', accept: '.mp3,.wav', hint: 'mp3 · wav' },
 ]
@@ -17,6 +17,54 @@ interface Candidate {
   id: number
   source: 'embedded' | 'render'
   dataUrl: string
+}
+
+/** 업로드 콘텐츠(SPA 포함)가 same-origin으로 호출 가능한 플랫폼 API — 패널·MD 공용 */
+const PLATFORM_APIS: { method: string; path: string; desc: string }[] = [
+  { method: 'POST', path: '/api/v1/words/generate', desc: 'Silent-e 단어쌍 생성' },
+  { method: 'POST', path: '/api/v1/quiz/generate', desc: '객관식 퀴즈 생성' },
+  { method: 'GET·POST', path: '/api/v1/tts/speech', desc: '텍스트→음성(MP3)' },
+  { method: 'POST', path: '/api/v1/speech/token', desc: 'Azure Speech 단기 토큰' },
+]
+
+/** 플랫폼 API 참고 문서를 Markdown 파일로 다운로드 */
+function downloadPlatformApiMd() {
+  const lines = [
+    '# Phonics Studio — 콘텐츠용 플랫폼 API',
+    '',
+    '업로드한 콘텐츠(SPA 포함)는 **같은 출처(same-origin)** 에서 아래 API를 호출할 수 있습니다.',
+    "외부 도메인 통신은 차단됩니다 (CSP `connect-src 'self'`).",
+    '',
+    '## 엔드포인트',
+    ...PLATFORM_APIS.map((a) => `- \`${a.method} ${a.path}\` — ${a.desc}`),
+    '',
+    '## 호출 예시',
+    '```js',
+    "// 단어쌍 생성",
+    "const res = await fetch('/api/v1/words/generate', {",
+    "  method: 'POST',",
+    "  headers: { 'Content-Type': 'application/json' },",
+    "  body: JSON.stringify({ count: 6 }),",
+    '})',
+    'const { items } = await res.json()',
+    '',
+    "// TTS (오디오 재생)",
+    "const audio = new Audio('/api/v1/tts/speech?text=' + encodeURIComponent('cat'))",
+    'audio.play()',
+    '```',
+    '',
+    '> 키 미설정 시 단어/퀴즈는 mock 폴백, TTS/토큰은 503으로 응답합니다.',
+    '',
+  ]
+  const blob = new Blob([lines.join('\n')], { type: 'text/markdown;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = 'phonics-platform-api.md'
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  URL.revokeObjectURL(url)
 }
 
 function formatSize(bytes: number) {
@@ -77,13 +125,13 @@ function ThumbBox({
 }) {
   if (override) {
     return (
-      <div className="flex h-28 w-40 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-brand-200 bg-brand-50/50">
+      <div className="flex h-40 w-56 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-brand-200 bg-brand-50/50">
         <img src={override} alt="썸네일" className="h-full w-full object-cover" />
       </div>
     )
   }
   return (
-    <div className="flex h-28 w-40 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-brand-200 bg-brand-50/50">
+    <div className="flex h-40 w-56 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-brand-200 bg-brand-50/50">
       {preview?.kind === 'html' && (
         <iframe
           srcDoc={preview.src}
@@ -119,6 +167,8 @@ export function StudioPage() {
   const [fileType, setFileType] = useState<FileType>('html')
   const [regCourse, setRegCourse] = useState<string | null>(null)
   const [regSkills, setRegSkills] = useState<SkillTag[]>([])
+  const [aiInfo, setAiInfo] = useState<string | null>(null)
+  const [fileError, setFileError] = useState<string | null>(null)
   const [thumbFile, setThumbFile] = useState<File | null>(null)
   const [manualThumbUrl, setManualThumbUrl] = useState<string | null>(null)
   const [candidates, setCandidates] = useState<Candidate[]>([])
@@ -134,6 +184,8 @@ export function StudioPage() {
 
   // 썸네일 선택/후보 요청의 순서 보장용 시퀀스 — 오래된 응답이 최신 선택을 덮지 못하게 한다.
   const thumbSeq = useRef(0)
+  // AI 분석 전용 시퀀스 — 썸네일 선택(후보/수동)과 독립. 썸네일 조작이 진행 중인 분석 결과를 폐기하지 않게 분리.
+  const analyzeSeq = useRef(0)
 
   // 파일 선택 시 등록 전 썸네일 후보 조회(html/zip). 첫 후보 자동 선택.
   const fetchCandidates = useMutation({
@@ -153,14 +205,71 @@ export function StudioPage() {
     },
   })
 
+  // 등록 전 AI 자동 메타 분석 — 파일 선택 시 title·description·course·skill 프리필(빈 필드만)
+  const analyzeFile = useMutation({
+    mutationFn: (vars: { f: File; seq: number }) => {
+      const fd = new FormData()
+      fd.set('file', vars.f)
+      return api.postForm<AnalyzeSuggestion>('/api/contents/analyze-file', fd)
+    },
+    onSuccess: (s, vars) => {
+      if (vars.seq !== analyzeSeq.current) return // 더 최신 파일 선택이 있으면 폐기(순서 가드)
+      const filled: string[] = []
+      // 사용자가 이미 입력/선택한 값은 덮지 않고 빈 필드만 채운다(입력 보호)
+      if (s.title && !title.trim()) { setTitle(s.title); filled.push('제목') }
+      if (s.description && !description.trim()) { setDescription(s.description); filled.push('설명') }
+      if (s.courseCode && !regCourse) { setRegCourse(s.courseCode); filled.push('레벨') }
+      if (s.skillCode && regSkills.length === 0) { setRegSkills([{ skillCode: s.skillCode, isPrimary: true }]); filled.push('스킬') }
+      const hadSuggestion = !!(s.title || s.description || s.courseCode || s.skillCode)
+      setAiInfo(
+        filled.length
+          ? `✨ AI가 ${filled.join('·')}을(를) 자동 채웠어요 (확신도 ${Math.round((s.confidence || 0) * 100)}%) — 확인 후 수정할 수 있어요`
+          : hadSuggestion
+            ? 'AI가 제안했지만 이미 입력한 값이 있어 그대로 유지했어요.'
+            : 'AI가 분석했지만 자동 채울 항목을 찾지 못했어요. 직접 입력해주세요.',
+      )
+    },
+    onError: (_e, vars) => {
+      if (vars.seq !== analyzeSeq.current) return // 이후 다른 파일을 골랐으면 무시
+      setAiInfo('AI 자동 분석에 실패했어요. 제목·설명·레벨·스킬을 직접 입력해주세요.')
+    },
+  })
+
   const onPickFile = (f: File | null) => {
     const seq = ++thumbSeq.current
+    const aseq = ++analyzeSeq.current // 파일 변경/초기화 시 진행 중인 AI 분석 응답도 폐기
+    // 선택한 파일 확장자가 현재 타입과 맞는지 검증 — accept는 힌트일 뿐이라(전체파일/드래그) 하드 가드 필요
+    if (f) {
+      const lower = f.name.toLowerCase()
+      const dot = lower.lastIndexOf('.')
+      const ext = dot >= 0 ? lower.slice(dot) : '' // 점 없는 파일명은 확장자 없음('')으로 처리
+      const allowed = acceptForType.split(',').map((s) => s.trim().toLowerCase())
+      if (!allowed.includes(ext)) {
+        const label = FILE_TYPES.find((t) => t.value === fileType)?.label ?? fileType
+        setFileError(
+          `${label} 타입에는 ${allowed.join(', ')} 파일만 올릴 수 있어요. 선택한 파일: ${ext || '(확장자 없음)'}`,
+        )
+        setFile(null)
+        setCandidates([])
+        setChosenCand(null)
+        setThumbFile(null)
+        setAiInfo(null)
+        if (fileInput.current) fileInput.current.value = ''
+        if (thumbInput.current) thumbInput.current.value = ''
+        return
+      }
+    }
+    setFileError(null)
     setFile(f)
     setCandidates([])
     setChosenCand(null)
     setThumbFile(null)
+    setAiInfo(null)
     if (thumbInput.current) thumbInput.current.value = ''
-    if (f && (fileType === 'html' || fileType === 'zip')) fetchCandidates.mutate({ f, seq })
+    if (f && (fileType === 'html' || fileType === 'zip')) {
+      fetchCandidates.mutate({ f, seq })
+      analyzeFile.mutate({ f, seq: aseq })
+    }
   }
 
   const chooseCandidate = async (c: Candidate) => {
@@ -205,6 +314,7 @@ export function StudioPage() {
       setExternalUrl('')
       setRegCourse(null)
       setRegSkills([])
+      setAiInfo(null)
       setThumbFile(null)
       setCandidates([])
       setChosenCand(null)
@@ -275,6 +385,13 @@ export function StudioPage() {
             </div>
           </div>
 
+          {/* AI 자동 분석 안내 — 파일 선택 시 자동 실행 */}
+          {inputMode === 'file' && (analyzeFile.isPending || aiInfo) && (
+            <p className="rounded-lg bg-indigo-50 px-3 py-2 text-xs text-indigo-700">
+              {analyzeFile.isPending ? '✨ AI가 콘텐츠를 분석해 제목·설명·레벨·스킬을 채우는 중이에요…' : aiInfo}
+            </p>
+          )}
+
           {/* 썸네일 후보 — 썸네일 블록 바로 아래(전체 너비) */}
           {inputMode === 'file' &&
             (fileType === 'html' || fileType === 'zip') &&
@@ -334,11 +451,19 @@ export function StudioPage() {
                   업로드한 콘텐츠(SPA 포함)는 같은 출처(same-origin)에서 아래 API를 호출할 수 있어요. 외부 도메인 통신은 차단됩니다.
                 </p>
                 <ul className="mt-2 space-y-1 text-xs text-gray-600">
-                  <li><code className="text-brand-700">POST /api/v1/words/generate</code> — Silent-e 단어쌍 생성</li>
-                  <li><code className="text-brand-700">POST /api/v1/quiz/generate</code> — 객관식 퀴즈 생성</li>
-                  <li><code className="text-brand-700">GET·POST /api/v1/tts/speech</code> — 텍스트→음성(MP3)</li>
-                  <li><code className="text-brand-700">POST /api/v1/speech/token</code> — Azure Speech 단기 토큰</li>
+                  {PLATFORM_APIS.map((a) => (
+                    <li key={a.path}>
+                      <code className="text-brand-700">{a.method} {a.path}</code> — {a.desc}
+                    </li>
+                  ))}
                 </ul>
+                <button
+                  type="button"
+                  onClick={downloadPlatformApiMd}
+                  className="mt-3 rounded-lg border border-brand-200 px-3 py-1.5 text-xs font-semibold text-brand-600 hover:bg-brand-50"
+                >
+                  📥 API 문서 MD 다운로드
+                </button>
               </details>
             )}
           {inputMode === 'file' && (
@@ -417,7 +542,11 @@ export function StudioPage() {
             />
           )}
 
-        
+          {fileError && (
+            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">⚠ {fileError}</p>
+          )}
+
+
 
           <p className="text-xs text-gray-400">
             썸네일은 위에서 고르거나 직접 등록할 수 있어요. 미선택 시 등록 후 첫 화면이 자동 캡처됩니다.
