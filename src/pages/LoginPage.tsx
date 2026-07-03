@@ -5,8 +5,7 @@ import { api } from '../api/client'
 import type { Role, User } from '../api/types'
 import { homeFor } from '../auth/auth'
 
-const inputCls =
-  'w-full rounded-xl border border-brand-200 bg-white px-3.5 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200'
+const inputCls = 'auth-input'
 
 export function LoginPage() {
   const [mode, setMode] = useState<'login' | 'signup'>('login')
@@ -34,84 +33,116 @@ export function LoginPage() {
       const from = (location.state as { from?: string } | null)?.from
       navigate(from ?? homeFor(user.role), { replace: true })
     } catch (err) {
-      setError(err instanceof Error ? err.message : '요청에 실패했습니다.')
+      setError(err instanceof Error ? err.message : '요청을 처리하지 못했습니다.')
     } finally {
       setBusy(false)
     }
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-4">
-      <div className="w-full max-w-sm">
-        <div className="mb-6 text-center">
-          <div className="text-3xl">🎠</div>
-          <h1 className="text-2xl font-extrabold tracking-tight text-brand-700">
-            PHONICS <span className="text-brand-500">STUDIO</span>
-          </h1>
-          <p className="mt-1 text-sm text-gray-500">파닉스 콘텐츠 등록 · 검수 · 게시</p>
+    <main className="auth-shell">
+      <section className="auth-copy-panel" aria-label="Phonics Studio">
+        <div className="auth-kicker">Game Builder Studio</div>
+        <h1>
+          PHONICS <span>STUDIO</span>
+        </h1>
+        <p>재밌는 파닉스 학습 게임을 등록하고 검수해요.</p>
+        <div className="auth-badges" aria-hidden="true">
+          <span>Build</span>
+          <span>Review</span>
+          <span>Publish</span>
         </div>
+      </section>
 
-        <div className="rounded-2xl bg-white p-6 shadow-card">
-          <div className="mb-5 grid grid-cols-2 rounded-xl bg-brand-50 p-1 text-sm font-semibold">
+      <section className="auth-form-panel" aria-label="로그인">
+        <div className="auth-card">
+          <div className="auth-card-heading">
+            <div className="auth-mark">S</div>
+            <div>
+              <h2>{mode === 'login' ? '로그인' : '회원가입'}</h2>
+              <p>콘텐츠 제작 계정으로 시작하세요.</p>
+            </div>
+          </div>
+
+          <div className="auth-tabs" role="tablist" aria-label="인증 방식">
             {(['login', 'signup'] as const).map((m) => (
               <button
                 key={m}
+                type="button"
+                role="tab"
+                aria-selected={mode === m}
                 onClick={() => {
                   setMode(m)
                   setError('')
                 }}
-                className={`rounded-lg py-1.5 ${mode === m ? 'bg-white text-brand-700 shadow-sm' : 'text-gray-400'}`}
+                className="auth-tab"
               >
                 {m === 'login' ? '로그인' : '회원가입'}
               </button>
             ))}
           </div>
 
-          <form onSubmit={onSubmit} className="space-y-3">
+          <form onSubmit={onSubmit} className="auth-form">
             {mode === 'signup' && (
-              <input value={name} onChange={(e) => setName(e.target.value)} placeholder="이름" required className={inputCls} />
+              <label className="auth-field">
+                <span>이름</span>
+                <input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="홍길동"
+                  required
+                  className={inputCls}
+                />
+              </label>
             )}
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="이메일"
-              required
-              className={inputCls}
-            />
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder={mode === 'signup' ? '비밀번호 (8자 이상)' : '비밀번호'}
-              required
-              minLength={mode === 'signup' ? 8 : undefined}
-              className={inputCls}
-            />
+            <label className="auth-field">
+              <span>이메일</span>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="creator@demo.test"
+                required
+                className={inputCls}
+              />
+            </label>
+            <label className="auth-field">
+              <span>비밀번호</span>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder={mode === 'signup' ? '8자 이상 입력' : '비밀번호 입력'}
+                required
+                minLength={mode === 'signup' ? 8 : undefined}
+                className={inputCls}
+              />
+            </label>
             {mode === 'signup' && (
-              <select value={role} onChange={(e) => setRole(e.target.value as Role)} className={inputCls}>
-                <option value="creator">창작자 (콘텐츠 등록)</option>
-                <option value="reviewer">검토자 (검수·승인)</option>
-                <option value="ops">운영자 (게시)</option>
-              </select>
+              <label className="auth-field">
+                <span>역할</span>
+                <select value={role} onChange={(e) => setRole(e.target.value as Role)} className={inputCls}>
+                  <option value="creator">창작자 (콘텐츠 등록)</option>
+                  <option value="reviewer">검수자 (검수)</option>
+                  <option value="ops">운영자 (게시)</option>
+                </select>
+              </label>
             )}
-            {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">{error}</p>}
-            <button
-              type="submit"
-              disabled={busy}
-              className="w-full rounded-xl bg-brand-600 py-2.5 text-sm font-bold text-white hover:bg-brand-700 disabled:opacity-50"
-            >
-              {busy ? '처리 중…' : mode === 'login' ? '로그인' : '가입하기'}
+            {error && <p className="auth-error">{error}</p>}
+            <button type="submit" disabled={busy} className="auth-submit">
+              {busy ? '처리 중...' : mode === 'login' ? '로그인' : '가입하기'}
             </button>
           </form>
         </div>
 
-        <div className="mt-4 rounded-xl border border-dashed border-brand-200 bg-white/60 p-3 text-center text-xs text-gray-500">
-          데모 계정 — creator@demo.test · reviewer@demo.test · ops@demo.test
-          <br />
-          비밀번호 공통: <b>demo1234</b>
+        <div className="demo-account-card">
+          <span>데모 계정</span>
+          <b>creator@demo.test</b>
+          <b>reviewer@demo.test</b>
+          <b>ops@demo.test</b>
+          <span>비밀번호 공통: demo1234</span>
         </div>
-      </div>
-    </div>
+      </section>
+    </main>
   )
 }

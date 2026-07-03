@@ -1,4 +1,4 @@
-import { useNavigate, NavLink } from 'react-router-dom'
+import { NavLink, useNavigate } from 'react-router-dom'
 import type { Role, User } from '../api/types'
 import { useLogout } from '../auth/auth'
 
@@ -14,43 +14,33 @@ const TABS: Record<Role, { to: string; label: string }[]> = {
   ],
 }
 
-const ROLE_LABEL: Record<Role, string> = { creator: '창작자', reviewer: '검토자', ops: '운영자' }
+const ROLE_LABEL: Record<Role, string> = { creator: '창작자', reviewer: '검수자', ops: '운영자' }
 
-/** 역할별 탭/메뉴 필터 (F-18, A의 TopBar) */
 export function TopBar({ user }: { user: User }) {
   const navigate = useNavigate()
   const logout = useLogout()
 
   return (
-    <header className="sticky top-0 z-10 border-b border-brand-100 bg-white/90 backdrop-blur">
-      <div className="mx-auto flex h-14 max-w-5xl items-center gap-6 px-4">
-        <span className="text-lg font-extrabold tracking-tight text-brand-700">
-          🎠 PHONICS <span className="text-brand-500">STUDIO</span>
+    <header className="app-topbar">
+      <div className="app-topbar-inner">
+        <span className="app-brand">
+          <span className="app-brand-mark">S</span>
+          <span>
+            PHONICS <b>STUDIO</b>
+          </span>
         </span>
-        <nav className="flex gap-1">
+        <nav className="app-nav" aria-label="주 메뉴">
           {TABS[user.role].map((t) => (
-            <NavLink
-              key={t.to}
-              to={t.to}
-              end
-              className={({ isActive }) =>
-                `rounded-lg px-3 py-1.5 text-sm font-semibold ${
-                  isActive ? 'bg-brand-100 text-brand-700' : 'text-gray-500 hover:text-brand-600'
-                }`
-              }
-            >
+            <NavLink key={t.to} to={t.to} end className="app-nav-link">
               {t.label}
             </NavLink>
           ))}
         </nav>
-        <div className="ml-auto flex items-center gap-3 text-sm">
-          <span className="text-gray-600">
-            {user.name} <span className="text-xs text-brand-500">({ROLE_LABEL[user.role]})</span>
+        <div className="app-user-menu">
+          <span>
+            {user.name} <b>{ROLE_LABEL[user.role]}</b>
           </span>
-          <button
-            onClick={() => logout().then(() => navigate('/login'))}
-            className="rounded-lg border border-gray-200 px-3 py-1 text-xs text-gray-500 hover:bg-gray-50"
-          >
+          <button onClick={() => logout().then(() => navigate('/login'))} className="app-logout">
             로그아웃
           </button>
         </div>
