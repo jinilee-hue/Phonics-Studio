@@ -2,12 +2,15 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import { api } from '../api/client'
 import { EDITABLE_STATUSES } from '../api/types'
-import type { AnalyzeResult, Content, ContentUpdate, Course, SkillOption, SkillTag } from '../api/types'
-import { KindBadge, StatusBadge } from '../components/badges'
+import type { AnalyzeResult, Content, ContentUpdate, Course, SkillOption, SkillTag, Status } from '../api/types'
+import { KindBadge, STATUS_LABEL, StatusBadge } from '../components/badges'
 import { PreviewModal } from '../components/PreviewModal'
 import { SkillCoursePicker } from '../components/SkillCoursePicker'
 
 const isEditable = (c: Content) => EDITABLE_STATUSES.includes(c.status)
+
+/** 상태 필터 탭 순서(라이프사이클 순) */
+const STATUS_TABS: Status[] = ['draft', 'in_review', 'approved', 'rejected', 'published']
 
 /** 내 콘텐츠 목록 — 본인 콘텐츠 + 승인 전(EDITABLE_STATUSES)만 인라인 수정(J MyContentPage).
  * 편집 폼은 코스→스킬 동적 피커(SkillCoursePicker)를 쓴다. */
@@ -29,11 +32,24 @@ export function MyContentPage() {
   })
   const [preview, setPreview] = useState<Content | null>(null)
   const [editingId, setEditingId] = useState<number | null>(null)
+  const [filter, setFilter] = useState<Status | 'all'>('all')
 
   const submit = useMutation({
     mutationFn: (id: number) => api.post<Content>(`/api/contents/${id}/submit`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['mine'] }),
   })
+
+  const remove = useMutation({
+    mutationFn: (id: number) => api.del(`/api/contents/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['mine'] }),
+  })
+
+  const counts = useMemo(() => {
+    const m = {} as Record<Status, number>
+    for (const c of mine) m[c.status] = (m[c.status] ?? 0) + 1
+    return m
+  }, [mine])
+  const shown = filter === 'all' ? mine : mine.filter((c) => c.status === filter)
 
   const labelFor = useMemo(() => {
     const m = new Map(skillOptions.map((o) => [o.code, o.label]))
@@ -50,8 +66,30 @@ export function MyContentPage() {
       <div className="flex items-end justify-between">
         <div>
           <h2 className="text-lg font-bold text-brand-800">내 콘텐츠 ({mine.length})</h2>
-          <p className="text-sm text-gray-500">승인 전(작성 중·반려)에만 제목·설명·코스·스킬을 수정할 수 있어요.</p>
+          <p className="text-sm text-gray-500">승인 전(작성 중·반려)에만 제목·설명·코스·스킬을 수정·삭제할 수 있어요.</p>
         </div>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <button
+          onClick={() => setFilter('all')}
+          className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
+            filter === 'all' ? 'bg-brand-600 text-white' : 'bg-white text-gray-600 hover:bg-brand-50'
+          }`}
+        >
+          전체 ({mine.length})
+        </button>
+        {STATUS_TABS.map((s) => (
+          <button
+            key={s}
+            onClick={() => setFilter(s)}
+            className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
+              filter === s ? 'bg-brand-600 text-white' : 'bg-white text-gray-600 hover:bg-brand-50'
+            }`}
+          >
+            {STATUS_LABEL[s]} ({counts[s] ?? 0})
+          </button>
+        ))}
       </div>
 
       <div className="space-y-3">
@@ -60,7 +98,12 @@ export function MyContentPage() {
             아직 등록한 콘텐츠가 없어요. 스튜디오에서 새 콘텐츠를 등록해보세요.
           </p>
         )}
-        {mine.map((c) => (
+        {mine.length > 0 && shown.length === 0 && (
+          <p className="rounded-2xl bg-white p-8 text-center text-sm text-gray-400 shadow-card">
+            이 상태의 콘텐츠가 없어요.
+          </p>
+        )}
+        {shown.map((c) => (
           <div key={c.id} className="flex gap-3 rounded-2xl bg-white p-4 shadow-card">
             {c.hasThumb && (
               <img
@@ -102,6 +145,17 @@ export function MyContentPage() {
                     className="rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-brand-700 disabled:opacity-50"
                   >
                     {c.status === 'rejected' ? '재제출' : '제출'}
+                  </button>
+                )}
+                {isEditable(c) && (
+                  <button
+                    onClick={() => {
+                      if (window.confirm('삭제하면 되돌릴 수 없어요. 삭제할까요?')) remove.mutate(c.id)
+                    }}
+                    disabled={remove.isPending}
+                    className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 disabled:opacity-50"
+                  >
+                    삭제
                   </button>
                 )}
               </span>

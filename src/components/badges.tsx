@@ -8,6 +8,15 @@ const STATUS_STYLE: Record<Status, { label: string; cls: string }> = {
   published: { label: '게시됨', cls: 'bg-emerald-100 text-emerald-700' },
 }
 
+/** 상태 코드 → 한글 라벨 (StatusBadge와 상태 필터 탭이 공유) */
+export const STATUS_LABEL: Record<Status, string> = {
+  draft: STATUS_STYLE.draft.label,
+  in_review: STATUS_STYLE.in_review.label,
+  approved: STATUS_STYLE.approved.label,
+  rejected: STATUS_STYLE.rejected.label,
+  published: STATUS_STYLE.published.label,
+}
+
 export function StatusBadge({ status }: { status: Status }) {
   const s = STATUS_STYLE[status]
   return <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${s.cls}`}>{s.label}</span>

@@ -53,4 +53,7 @@ export const api = {
   postForm<T>(path: string, form: FormData): Promise<T> {
     return fetch(path, { method: 'POST', credentials: 'include', body: form }).then((r) => handle<T>(r))
   },
+  del<T>(path: string): Promise<T> {
+    return fetch(path, { method: 'DELETE', credentials: 'include' }).then((r) => handle<T>(r))
+  },
 }
