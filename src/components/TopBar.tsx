@@ -3,9 +3,15 @@ import type { Role, User } from '../api/types'
 import { useLogout } from '../auth/auth'
 
 const TABS: Record<Role, { to: string; label: string }[]> = {
-  creator: [{ to: '/studio', label: '스튜디오' }],
+  creator: [
+    { to: '/studio', label: '스튜디오' },
+    { to: '/studio/mine', label: '내 콘텐츠' },
+  ],
   reviewer: [{ to: '/review', label: '검수' }],
-  ops: [{ to: '/ops', label: '운영' }],
+  ops: [
+    { to: '/ops', label: '운영' },
+    { to: '/ops/settings', label: '검수 규칙' },
+  ],
 }
 
 const ROLE_LABEL: Record<Role, string> = { creator: '창작자', reviewer: '검토자', ops: '운영자' }
@@ -26,6 +32,7 @@ export function TopBar({ user }: { user: User }) {
             <NavLink
               key={t.to}
               to={t.to}
+              end
               className={({ isActive }) =>
                 `rounded-lg px-3 py-1.5 text-sm font-semibold ${
                   isActive ? 'bg-brand-100 text-brand-700' : 'text-gray-500 hover:text-brand-600'

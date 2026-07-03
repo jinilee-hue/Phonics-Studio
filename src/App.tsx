@@ -4,8 +4,10 @@ import type { Role } from './api/types'
 import { homeFor, RequireRole, useMe } from './auth/auth'
 import { TopBar } from './components/TopBar'
 import { LoginPage } from './pages/LoginPage'
+import { MyContentPage } from './pages/MyContentPage'
 import { OpsPage } from './pages/OpsPage'
 import { ReviewPage } from './pages/ReviewPage'
+import { RubricSettingsPage } from './pages/RubricSettingsPage'
 import { StudioPage } from './pages/StudioPage'
 
 /** 역할 가드 + TopBar 셸 (F-17/F-18) */
@@ -40,8 +42,10 @@ export default function App() {
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/studio" element={<Protected roles={['creator']}><StudioPage /></Protected>} />
+        <Route path="/studio/mine" element={<Protected roles={['creator']}><MyContentPage /></Protected>} />
         <Route path="/review" element={<Protected roles={['reviewer']}><ReviewPage /></Protected>} />
         <Route path="/ops" element={<Protected roles={['ops']}><OpsPage /></Protected>} />
+        <Route path="/ops/settings" element={<Protected roles={['ops']}><RubricSettingsPage /></Protected>} />
         <Route path="/" element={<HomeRedirect />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

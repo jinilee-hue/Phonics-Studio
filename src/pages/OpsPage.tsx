@@ -37,6 +37,10 @@ export function OpsPage() {
     mutationFn: (id: number) => api.post<Content>(`/api/contents/${id}/publish`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['contents'] }),
   })
+  const reset = useMutation({
+    mutationFn: (id: number) => api.post<Content>(`/api/review/${id}/reset`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['contents'] }),
+  })
 
   return (
     <main className="mx-auto max-w-5xl space-y-8 px-4 py-8">
@@ -106,6 +110,7 @@ export function OpsPage() {
                 <th className="px-4 py-3">창작자</th>
                 <th className="px-4 py-3">제출</th>
                 <th className="px-4 py-3">게시</th>
+                <th className="px-4 py-3">작업</th>
               </tr>
             </thead>
             <tbody>
@@ -117,11 +122,23 @@ export function OpsPage() {
                   <td className="px-4 py-3 text-gray-500">{c.ownerName}</td>
                   <td className="px-4 py-3 text-xs text-gray-400">{formatDate(c.submittedAt)}</td>
                   <td className="px-4 py-3 text-xs text-gray-400">{formatDate(c.publishedAt)}</td>
+                  <td className="px-4 py-3">
+                    {(c.status === 'approved' || c.status === 'rejected') && (
+                      <button
+                        onClick={() => reset.mutate(c.id)}
+                        disabled={reset.isPending}
+                        className="rounded-lg border border-amber-300 px-2.5 py-1 text-xs font-semibold text-amber-700 hover:bg-amber-50 disabled:opacity-50"
+                        title="승인/반려 판정을 취소하고 검수 대기로 되돌립니다"
+                      >
+                        되돌리기
+                      </button>
+                    )}
+                  </td>
                 </tr>
               ))}
               {all.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-gray-400">
+                  <td colSpan={7} className="px-4 py-8 text-center text-gray-400">
                     콘텐츠가 없습니다.
                   </td>
                 </tr>

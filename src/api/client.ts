@@ -34,6 +34,22 @@ export const api = {
       body: body !== undefined ? JSON.stringify(body) : undefined,
     }).then((r) => handle<T>(r))
   },
+  patch<T>(path: string, body: unknown): Promise<T> {
+    return fetch(path, {
+      method: 'PATCH',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }).then((r) => handle<T>(r))
+  },
+  put<T>(path: string, body: unknown): Promise<T> {
+    return fetch(path, {
+      method: 'PUT',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }).then((r) => handle<T>(r))
+  },
   postForm<T>(path: string, form: FormData): Promise<T> {
     return fetch(path, { method: 'POST', credentials: 'include', body: form }).then((r) => handle<T>(r))
   },
