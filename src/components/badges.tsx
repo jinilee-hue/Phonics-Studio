@@ -26,7 +26,6 @@ const KIND_LABEL: Record<Kind, string> = {
   html: 'HTML',
   zip: 'ZIP',
   video: '비디오',
-  audio: '오디오',
   url: 'URL',
 }
 

@@ -4,13 +4,12 @@ import { api } from '../api/client'
 import type { AnalyzeSuggestion, Content, SkillTag } from '../api/types'
 import { SkillCoursePicker } from '../components/SkillCoursePicker'
 
-type FileType = 'html' | 'zip' | 'video' | 'audio'
+type FileType = 'html' | 'zip' | 'video'
 
 const FILE_TYPES: { value: FileType; label: string; accept: string; hint: string }[] = [
   { value: 'html', label: 'HTML', accept: '.html', hint: '단일 HTML 게임 파일' },
   { value: 'zip', label: 'ZIP', accept: '.zip', hint: '정적 빌드(dist/out) 후 ZIP파일로 묶어주세요' },
   { value: 'video', label: '비디오', accept: '.mp4,.webm', hint: 'mp4 · webm' },
-  { value: 'audio', label: '오디오', accept: '.mp3,.wav', hint: 'mp3 · wav' },
 ]
 
 interface Candidate {
@@ -82,7 +81,7 @@ type ThumbPreview =
   | { kind: 'icon'; icon: string; label: string }
 
 /** 선택한 파일의 즉시 썸네일 미리보기 — html은 sandbox iframe, 비디오는 objectURL 프레임,
- * 오디오/zip은 아이콘(등록 후 서버 자동 캡처가 대체). objectURL은 파일 변경 시 정리. */
+ * zip은 아이콘(등록 후 서버 자동 캡처가 대체). objectURL은 파일 변경 시 정리. */
 function useThumbPreview(file: File | null): ThumbPreview | null {
   const [preview, setPreview] = useState<ThumbPreview | null>(null)
   useEffect(() => {
@@ -107,8 +106,7 @@ function useThumbPreview(file: File | null): ThumbPreview | null {
       setPreview({ kind: 'video', url })
       return () => URL.revokeObjectURL(url)
     }
-    if (ext === 'mp3' || ext === 'wav') setPreview({ kind: 'icon', icon: '🎵', label: '오디오' })
-    else if (ext === 'zip') setPreview({ kind: 'icon', icon: '🗜️', label: 'ZIP (등록 후 자동 캡처)' })
+    if (ext === 'zip') setPreview({ kind: 'icon', icon: '🗜️', label: 'ZIP (등록 후 자동 캡처)' })
     else setPreview(null)
   }, [file])
   return preview
@@ -328,7 +326,7 @@ export function StudioPage() {
       <section className="rounded-2xl bg-white p-6 shadow-card">
         <h2 className="mb-1 text-lg font-bold text-brand-800">새 콘텐츠 등록</h2>
         <p className="mb-5 text-sm text-gray-500">
-          HTML · ZIP(정적 빌드) · 비디오(mp4/webm) · 오디오(mp3/wav) 파일 50MB까지, 또는 HTTPS URL을 등록할 수 있어요.
+          HTML · ZIP(정적 빌드) · 비디오(mp4/webm) 파일 50MB까지, 또는 HTTPS URL을 등록할 수 있어요.
         </p>
 
         <form

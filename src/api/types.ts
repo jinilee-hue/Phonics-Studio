@@ -1,5 +1,5 @@
 export type Role = 'creator' | 'reviewer' | 'ops'
-export type Kind = 'html' | 'zip' | 'video' | 'audio' | 'url'
+export type Kind = 'html' | 'zip' | 'video' | 'url'
 export type Status = 'draft' | 'in_review' | 'approved' | 'rejected' | 'published'
 
 export interface User {

@@ -55,12 +55,6 @@ export function PreviewModal({ content, onClose }: { content: Content; onClose: 
           <video src={preview.url} controls className="max-h-[60vh] w-full rounded-xl bg-black" />
         )}
 
-        {preview && content.kind === 'audio' && (
-          <div className="py-10">
-            <audio src={preview.url} controls className="w-full" />
-          </div>
-        )}
-
         {preview && content.kind === 'url' && (
           <div className="space-y-3">
             <iframe
