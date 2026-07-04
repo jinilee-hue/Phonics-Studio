@@ -24,7 +24,10 @@ export function StatsPage() {
     retry: false, // 연동 미설정 시 503 — 재시도 안 함
   })
   const syncRewards = useMutation({
-    mutationFn: () => api.post<{ syncedContents: number; newlyAwarded: number }>('/api/stats/sync-usage-rewards'),
+    mutationFn: () =>
+      api.post<{ syncedContents: number; settledContents: number; newlyAwarded: number }>(
+        '/api/stats/sync-usage-rewards',
+      ),
     onSuccess: () => play.refetch(),
   })
 
@@ -137,7 +140,7 @@ export function StatsPage() {
           )}
           {syncRewards.data && (
             <span className="text-xs text-emerald-600">
-              +{syncRewards.data.newlyAwarded}P 적립 ({syncRewards.data.syncedContents}개 콘텐츠 정산)
+              +{syncRewards.data.newlyAwarded}P 적립 (신규 정산 {syncRewards.data.settledContents}개 / 검토 {syncRewards.data.syncedContents}개)
             </span>
           )}
         </div>

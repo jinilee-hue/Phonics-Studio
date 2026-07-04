@@ -206,11 +206,6 @@ export interface PlaySummary {
   avgRating: number | null
   totalRatings: number
 }
-export interface PlayTrendPoint {
-  date: string
-  plays: number
-  completions: number
-}
 export interface PlayContentUsage {
   contentId: number
   uses: number
@@ -221,6 +216,5 @@ export interface PlayContentUsage {
 }
 export interface PlayStats {
   summary: PlaySummary
-  trends: PlayTrendPoint[]
   topContents: PlayContentUsage[]
 }
