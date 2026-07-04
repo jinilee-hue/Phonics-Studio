@@ -194,3 +194,33 @@ export interface Stats {
   submissionsTrend: TrendPoint[]
   creatorRanking: CreatorRank[]
 }
+
+/** 플레이 지표 (GET /api/stats/play) — playground 연동(Phase B) */
+export interface PlaySummary {
+  totalPlays: number
+  distinctLearners: number
+  distinctContent: number
+  completions: number
+  completionRate: number
+  activeNow: number
+  avgRating: number | null
+  totalRatings: number
+}
+export interface PlayTrendPoint {
+  date: string
+  plays: number
+  completions: number
+}
+export interface PlayContentUsage {
+  contentId: number
+  uses: number
+  completions: number
+  ratingAvg: number | null
+  ratingCount: number
+  title?: string
+}
+export interface PlayStats {
+  summary: PlaySummary
+  trends: PlayTrendPoint[]
+  topContents: PlayContentUsage[]
+}
