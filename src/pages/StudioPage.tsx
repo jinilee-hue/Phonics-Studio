@@ -1,8 +1,9 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import { api } from '../api/client'
-import type { AnalyzeSuggestion, Content, SkillTag } from '../api/types'
+import type { AnalyzeSuggestion, Content, ScanResult, SkillTag } from '../api/types'
 import { SkillCoursePicker } from '../components/SkillCoursePicker'
+import { ScanResultView } from '../components/SecurityScanPanel'
 
 type FileType = 'html' | 'zip' | 'video'
 
@@ -11,6 +12,9 @@ const FILE_TYPES: { value: FileType; label: string; accept: string; hint: string
   { value: 'zip', label: 'ZIP', accept: '.zip', hint: '정적 빌드(dist/out) 후 ZIP파일로 묶어주세요' },
   { value: 'video', label: '비디오', accept: '.mp4,.webm', hint: 'mp4 · webm' },
 ]
+
+/** 업로드 크기 상한(50MB) — 백엔드 max_upload_bytes와 동일. 서버 왕복 전 즉시 피드백용 */
+const MAX_UPLOAD_BYTES = 50 * 1024 * 1024
 
 interface Candidate {
   id: number
@@ -233,9 +237,22 @@ export function StudioPage() {
     },
   })
 
+  // 등록 전 정적 보안검사 — 파일 선택 시(html/zip) 실행. block 있으면 등록 버튼이 비활성된다.
+  const scanFile = useMutation({
+    mutationFn: (vars: { f: File }) => {
+      const fd = new FormData()
+      fd.set('file', vars.f)
+      return api.postForm<ScanResult>('/api/contents/scan-file', fd)
+    },
+  })
+  // 보안검사 게이트: html/zip 파일이 검사 중이거나 block 항목이 있으면 등록 차단(검사 오류는 fail-open — 검수 파이프라인이 최종 게이트)
+  const needsScan = inputMode === 'file' && (fileType === 'html' || fileType === 'zip') && !!file
+  const scanBlocked = needsScan && (scanFile.isPending || !!scanFile.data?.hasBlocking)
+
   const onPickFile = (f: File | null) => {
     const seq = ++thumbSeq.current
     const aseq = ++analyzeSeq.current // 파일 변경/초기화 시 진행 중인 AI 분석 응답도 폐기
+    scanFile.reset() // 이전 파일의 검사 결과 폐기(새 파일로 재검사)
     // 선택한 파일 확장자가 현재 타입과 맞는지 검증 — accept는 힌트일 뿐이라(전체파일/드래그) 하드 가드 필요
     if (f) {
       const lower = f.name.toLowerCase()
@@ -256,6 +273,18 @@ export function StudioPage() {
         if (thumbInput.current) thumbInput.current.value = ''
         return
       }
+      // 크기 상한 하드 가드 — 서버 왕복(50MB 업로드) 전에 즉시 거절
+      if (f.size > MAX_UPLOAD_BYTES) {
+        setFileError(`파일이 50MB 상한을 초과합니다. (선택한 파일: ${formatSize(f.size)})`)
+        setFile(null)
+        setCandidates([])
+        setChosenCand(null)
+        setThumbFile(null)
+        setAiInfo(null)
+        if (fileInput.current) fileInput.current.value = ''
+        if (thumbInput.current) thumbInput.current.value = ''
+        return
+      }
     }
     setFileError(null)
     setFile(f)
@@ -267,6 +296,7 @@ export function StudioPage() {
     if (f && (fileType === 'html' || fileType === 'zip')) {
       fetchCandidates.mutate({ f, seq })
       analyzeFile.mutate({ f, seq: aseq })
+      scanFile.mutate({ f })
     }
   }
 
@@ -316,6 +346,7 @@ export function StudioPage() {
       setThumbFile(null)
       setCandidates([])
       setChosenCand(null)
+      scanFile.reset()
       if (fileInput.current) fileInput.current.value = ''
       if (thumbInput.current) thumbInput.current.value = ''
     },
@@ -544,6 +575,31 @@ export function StudioPage() {
             <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">⚠ {fileError}</p>
           )}
 
+          {/* 등록 전 보안검사 — html/zip 파일 선택 시. block이 있으면 아래 등록 버튼이 잠긴다. */}
+          {inputMode === 'file' && (fileType === 'html' || fileType === 'zip') && file && (
+            <>
+              {scanFile.isPending && (
+                <p className="rounded-lg bg-brand-50 px-3 py-2 text-sm text-brand-600">🔒 보안검사 중…</p>
+              )}
+              {scanFile.isError && (
+                <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
+                  보안검사 실패: {scanFile.error instanceof Error ? scanFile.error.message : '알 수 없는 오류'}
+                </p>
+              )}
+              {scanFile.data && (
+                <div className="rounded-xl border border-brand-100 bg-white p-4">
+                  <h3 className="mb-2 text-sm font-bold text-brand-800">🔒 보안 검사</h3>
+                  <ScanResultView data={scanFile.data} />
+                  {scanFile.data.hasBlocking && (
+                    <p className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-xs font-semibold text-red-600">
+                      차단 항목이 있어 등록할 수 없어요. 위 항목을 수정한 뒤 파일을 다시 선택해주세요.
+                    </p>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+
 
 
           <p className="text-xs text-gray-400">
@@ -576,13 +632,19 @@ export function StudioPage() {
           <div className="flex items-center gap-3">
             <button
               type="submit"
-              disabled={register.isPending || !hasPrimarySkill}
+              disabled={register.isPending || !hasPrimarySkill || scanBlocked}
               className="rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-brand-700 disabled:opacity-50"
             >
-              {register.isPending ? '검사 중…' : '등록하기'}
+              {register.isPending ? '등록 중…' : '등록하기'}
             </button>
             {!hasPrimarySkill && (
               <span className="text-xs text-gray-400">주 스킬(★) 1개를 지정하면 등록할 수 있어요.</span>
+            )}
+            {hasPrimarySkill && scanFile.isPending && (
+              <span className="text-xs text-gray-400">보안검사 통과 후 등록할 수 있어요.</span>
+            )}
+            {hasPrimarySkill && scanFile.data?.hasBlocking && (
+              <span className="text-xs text-red-500">보안검사 차단 항목을 수정해야 등록할 수 있어요.</span>
             )}
           </div>
         </form>

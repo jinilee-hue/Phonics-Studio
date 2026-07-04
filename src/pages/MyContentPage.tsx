@@ -5,6 +5,7 @@ import { EDITABLE_STATUSES } from '../api/types'
 import type { AnalyzeResult, Content, ContentUpdate, Course, SkillOption, SkillTag, Status } from '../api/types'
 import { KindBadge, STATUS_LABEL, StatusBadge } from '../components/badges'
 import { PreviewModal } from '../components/PreviewModal'
+import { SecurityScanPanel } from '../components/SecurityScanPanel'
 import { SkillCoursePicker } from '../components/SkillCoursePicker'
 
 const isEditable = (c: Content) => EDITABLE_STATUSES.includes(c.status)
@@ -32,6 +33,7 @@ export function MyContentPage() {
   })
   const [preview, setPreview] = useState<Content | null>(null)
   const [editingId, setEditingId] = useState<number | null>(null)
+  const [scanId, setScanId] = useState<number | null>(null) // 보안 검사 패널을 펼친 콘텐츠
   const [filter, setFilter] = useState<Status | 'all'>('all')
 
   const submit = useMutation({
@@ -130,6 +132,14 @@ export function MyContentPage() {
                 >
                   미리보기
                 </button>
+                {(c.kind === 'zip' || c.kind === 'html') && (
+                  <button
+                    onClick={() => setScanId(scanId === c.id ? null : c.id)}
+                    className="rounded-lg border border-brand-200 px-3 py-1.5 text-xs font-semibold text-brand-600 hover:bg-brand-50"
+                  >
+                    {scanId === c.id ? '검사 닫기' : '🔒 보안 검사'}
+                  </button>
+                )}
                 {isEditable(c) && (
                   <button
                     onClick={() => setEditingId(editingId === c.id ? null : c.id)}
@@ -182,6 +192,12 @@ export function MyContentPage() {
 
             {c.status === 'rejected' && c.rejectReason && (
               <p className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">반려 사유: {c.rejectReason}</p>
+            )}
+
+            {scanId === c.id && (
+              <div className="mt-4">
+                <SecurityScanPanel content={c} />
+              </div>
             )}
 
             {editingId === c.id && <EditForm content={c} onClose={() => setEditingId(null)} />}

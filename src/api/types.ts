@@ -111,5 +111,32 @@ export interface Preview {
   external: boolean
 }
 
+export type ScanSeverity = 'block' | 'warn' | 'info'
+
+/** 정적 심사 개별 위험 신호 (백엔드 static_scan.ScanFlag와 일치) */
+export interface ScanFlag {
+  code: string
+  severity: ScanSeverity
+  message: string
+  file: string
+  evidence: string
+}
+
+/** 정적 심사 결과 — 형식·악성패턴·API 허용목록.
+ * POST /api/contents/{id}/scan(저장된 콘텐츠) 및 POST /api/contents/scan-file(등록 전 파일) 공용 응답. */
+export interface ScanResult {
+  flags: ScanFlag[]
+  counts: Record<ScanSeverity, number>
+  hasBlocking: boolean
+  scannedFiles: number
+  limitation: string
+  apiAllowlist: {
+    allowed: string[]
+    allowedCalls: number
+    unlistedCalls: number
+  }
+  kind?: Kind // scan-file(등록 전)에서만 함께 반환
+}
+
 /** 승인 전 — 창작자가 in-place 수정 가능한 상태 (백엔드 EDITABLE_STATUSES와 일치) */
 export const EDITABLE_STATUSES: Status[] = ['draft', 'rejected']
