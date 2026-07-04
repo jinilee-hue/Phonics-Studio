@@ -1,9 +1,55 @@
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../api/client'
 import type { Content, Preview } from '../api/types'
 
+/** 미리보기 뷰포트 — iframe 엘리먼트 너비를 기기별 폭으로 제한해 반응형 레이아웃을 확인 */
+type Viewport = 'desktop' | 'tablet' | 'mobile'
+
+const VIEWPORTS: { id: Viewport; label: string; width: number | null }[] = [
+  { id: 'desktop', label: '데스크톱', width: null }, // null = 전체 너비
+  { id: 'tablet', label: '태블릿', width: 768 },
+  { id: 'mobile', label: '모바일', width: 375 },
+]
+
+/**
+ * 뷰포트 폭이 적용된 iframe 프레임. vpWidth가 있으면 그 px 폭으로 고정하고
+ * (max-w 제약 없이) 래퍼가 가로 스크롤을 처리 → 실제 기기 폭을 보장.
+ */
+function ViewportFrame({
+  src,
+  sandbox,
+  allow,
+  title,
+  heightClass,
+  vpWidth,
+}: {
+  src: string
+  sandbox: string
+  allow?: string
+  title: string
+  heightClass: string
+  vpWidth: number | null
+}) {
+  return (
+    <div className="flex justify-center overflow-auto">
+      <iframe
+        src={src}
+        sandbox={sandbox}
+        allow={allow}
+        title={title}
+        style={vpWidth ? { width: vpWidth } : undefined}
+        className={`${heightClass} shrink-0 rounded-xl border border-brand-100 bg-white ${vpWidth ? '' : 'w-full'}`}
+      />
+    </div>
+  )
+}
+
 /** 테스트 플레이 미리보기 (F-07/F-12) — kind별 분기, iframe은 allow-same-origin 없이 격리(G). */
 export function PreviewModal({ content, onClose }: { content: Content; onClose: () => void }) {
+  const [viewport, setViewport] = useState<Viewport>('desktop')
+  const vpWidth = VIEWPORTS.find((v) => v.id === viewport)?.width ?? null
+
   const { data: preview, isLoading, error } = useQuery<Preview>({
     queryKey: ['preview', content.id],
     queryFn: () => api.get<Preview>(`/api/contents/${content.id}/preview`),
@@ -12,10 +58,13 @@ export function PreviewModal({ content, onClose }: { content: Content; onClose: 
     retry: false,
   })
 
+  // iframe 기반 kind에서만 뷰포트 전환 툴바 노출 (video 제외)
+  const showViewportToolbar = content.kind !== 'video'
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
       <div
-        className="flex max-h-[90vh] w-full max-w-3xl flex-col rounded-2xl bg-white p-5 shadow-modal"
+        className="flex max-h-[90vh] w-full max-w-5xl flex-col overflow-y-auto rounded-2xl bg-white p-5 shadow-modal"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-3 flex items-center justify-between">
@@ -25,6 +74,24 @@ export function PreviewModal({ content, onClose }: { content: Content; onClose: 
           </button>
         </div>
 
+        {showViewportToolbar && preview && (
+          <div className="mb-3 flex items-center gap-2">
+            {VIEWPORTS.map((v) => (
+              <button
+                key={v.id}
+                onClick={() => setViewport(v.id)}
+                className={`rounded-lg border px-3 py-1.5 text-xs font-semibold ${
+                  viewport === v.id
+                    ? 'border-brand-600 bg-brand-600 text-white'
+                    : 'border-brand-200 text-brand-600 hover:bg-brand-50'
+                }`}
+              >
+                {v.label}
+              </button>
+            ))}
+          </div>
+        )}
+
         {isLoading && <p className="py-16 text-center text-gray-400">불러오는 중…</p>}
         {error instanceof Error && (
           <p className="py-16 text-center text-red-500">{error.message}</p>
@@ -32,22 +99,24 @@ export function PreviewModal({ content, onClose }: { content: Content; onClose: 
 
         {/* zip(SPA)은 격리된 서브도메인 오리진에서 서빙되므로 allow-same-origin이 안전(ES모듈·localStorage·상대 fetch 필요) */}
         {preview && content.kind === 'zip' && (
-          <iframe
+          <ViewportFrame
             src={preview.url}
             sandbox="allow-scripts allow-same-origin allow-modals"
             allow="microphone; autoplay"
             title={content.title}
-            className="h-[60vh] w-full rounded-xl border border-brand-100 bg-white"
+            heightClass="h-[60vh]"
+            vpWidth={vpWidth}
           />
         )}
 
         {/* html(자체완결)은 플랫폼 오리진 서빙 → opaque origin 유지(allow-same-origin 금지) */}
         {preview && content.kind === 'html' && (
-          <iframe
+          <ViewportFrame
             src={preview.url}
             sandbox="allow-scripts"
             title={content.title}
-            className="h-[60vh] w-full rounded-xl border border-brand-100 bg-white"
+            heightClass="h-[60vh]"
+            vpWidth={vpWidth}
           />
         )}
 
@@ -57,11 +126,12 @@ export function PreviewModal({ content, onClose }: { content: Content; onClose: 
 
         {preview && content.kind === 'url' && (
           <div className="space-y-3">
-            <iframe
+            <ViewportFrame
               src={preview.url}
               sandbox="allow-scripts allow-same-origin"
               title={content.title}
-              className="h-[55vh] w-full rounded-xl border border-brand-100 bg-white"
+              heightClass="h-[55vh]"
+              vpWidth={vpWidth}
             />
             <div className="flex items-center justify-between rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
               <span>외부 사이트 정책(X-Frame-Options/CSP)에 따라 화면이 비어 보일 수 있습니다.</span>
