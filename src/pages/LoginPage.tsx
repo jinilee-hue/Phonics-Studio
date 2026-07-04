@@ -2,7 +2,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { api } from '../api/client'
-import type { Role, User } from '../api/types'
+import type { User } from '../api/types'
 import { homeFor } from '../auth/auth'
 
 const inputCls = 'auth-input'
@@ -12,7 +12,6 @@ export function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [name, setName] = useState('')
-  const [role, setRole] = useState<Role>('creator')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
 
@@ -28,7 +27,7 @@ export function LoginPage() {
       const user =
         mode === 'login'
           ? await api.post<User>('/api/auth/login', { email, password })
-          : await api.post<User>('/api/auth/signup', { email, password, name, role })
+          : await api.post<User>('/api/auth/signup', { email, password, name })
       qc.setQueryData(['me'], user)
       const from = (location.state as { from?: string } | null)?.from
       navigate(from ?? homeFor(user.role), { replace: true })
@@ -119,14 +118,7 @@ export function LoginPage() {
               />
             </label>
             {mode === 'signup' && (
-              <label className="auth-field">
-                <span>역할</span>
-                <select value={role} onChange={(e) => setRole(e.target.value as Role)} className={inputCls}>
-                  <option value="creator">창작자 (콘텐츠 등록)</option>
-                  <option value="reviewer">검수자 (검수)</option>
-                  <option value="ops">운영자 (게시)</option>
-                </select>
-              </label>
+              <p className="text-xs text-gray-400">가입 시 창작자 계정으로 시작합니다. 검수자·운영자 권한은 관리자가 부여합니다.</p>
             )}
             {error && <p className="auth-error">{error}</p>}
             <button type="submit" disabled={busy} className="auth-submit">

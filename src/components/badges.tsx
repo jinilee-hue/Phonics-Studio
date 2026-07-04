@@ -6,6 +6,8 @@ const STATUS_STYLE: Record<Status, { label: string; cls: string }> = {
   approved: { label: '승인됨', cls: 'bg-sky-100 text-sky-700' },
   rejected: { label: '반려됨', cls: 'bg-red-100 text-red-700' },
   published: { label: '게시됨', cls: 'bg-emerald-100 text-emerald-700' },
+  suspended: { label: '게시중단', cls: 'bg-orange-100 text-orange-700' },
+  archived: { label: '보관됨', cls: 'bg-slate-200 text-slate-600' },
 }
 
 /** 상태 코드 → 한글 라벨 (StatusBadge와 상태 필터 탭이 공유) */
@@ -15,6 +17,8 @@ export const STATUS_LABEL: Record<Status, string> = {
   approved: STATUS_STYLE.approved.label,
   rejected: STATUS_STYLE.rejected.label,
   published: STATUS_STYLE.published.label,
+  suspended: STATUS_STYLE.suspended.label,
+  archived: STATUS_STYLE.archived.label,
 }
 
 export function StatusBadge({ status }: { status: Status }) {

@@ -12,6 +12,8 @@ const FILTERS: { value: Status | ''; label: string }[] = [
   { value: 'approved', label: '승인됨' },
   { value: 'rejected', label: '반려됨' },
   { value: 'published', label: '게시됨' },
+  { value: 'suspended', label: '게시중단' },
+  { value: 'archived', label: '보관됨' },
 ]
 
 function formatDate(iso: string | null) {
@@ -22,6 +24,7 @@ function formatDate(iso: string | null) {
 export function OpsPage() {
   const [filter, setFilter] = useState<Status | ''>('')
   const [preview, setPreview] = useState<Content | null>(null)
+  const [suspendTarget, setSuspendTarget] = useState<Content | null>(null) // 긴급철회 사유 모달
 
   const qc = useQueryClient()
   const { data: approved = [] } = useQuery<Content[]>({
@@ -39,6 +42,22 @@ export function OpsPage() {
   })
   const reset = useMutation({
     mutationFn: (id: number) => api.post<Content>(`/api/review/${id}/reset`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['contents'] }),
+  })
+  const suspend = useMutation({
+    mutationFn: (v: { id: number; reason: string }) =>
+      api.post<Content>(`/api/contents/${v.id}/suspend`, { reason: v.reason }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['contents'] })
+      setSuspendTarget(null)
+    },
+  })
+  const archive = useMutation({
+    mutationFn: (id: number) => api.post<Content>(`/api/contents/${id}/archive`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['contents'] }),
+  })
+  const restore = useMutation({
+    mutationFn: (id: number) => api.post<Content>(`/api/contents/${id}/restore`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['contents'] }),
   })
 
@@ -123,16 +142,57 @@ export function OpsPage() {
                   <td className="px-4 py-3 text-xs text-gray-400">{formatDate(c.submittedAt)}</td>
                   <td className="px-4 py-3 text-xs text-gray-400">{formatDate(c.publishedAt)}</td>
                   <td className="px-4 py-3">
-                    {(c.status === 'approved' || c.status === 'rejected') && (
-                      <button
-                        onClick={() => reset.mutate(c.id)}
-                        disabled={reset.isPending}
-                        className="rounded-lg border border-amber-300 px-2.5 py-1 text-xs font-semibold text-amber-700 hover:bg-amber-50 disabled:opacity-50"
-                        title="승인/반려 판정을 취소하고 검수 대기로 되돌립니다"
-                      >
-                        되돌리기
-                      </button>
-                    )}
+                    <div className="flex flex-wrap gap-1.5">
+                      {(c.status === 'approved' || c.status === 'rejected') && (
+                        <button
+                          onClick={() => reset.mutate(c.id)}
+                          disabled={reset.isPending}
+                          className="rounded-lg border border-amber-300 px-2.5 py-1 text-xs font-semibold text-amber-700 hover:bg-amber-50 disabled:opacity-50"
+                          title="승인/반려 판정을 취소하고 검수 대기로 되돌립니다"
+                        >
+                          되돌리기
+                        </button>
+                      )}
+                      {c.status === 'published' && (
+                        <button
+                          onClick={() => setSuspendTarget(c)}
+                          className="rounded-lg border border-orange-300 px-2.5 py-1 text-xs font-semibold text-orange-700 hover:bg-orange-50"
+                          title="게시본을 긴급 철회합니다(카탈로그에서 즉시 제외)"
+                        >
+                          게시중단
+                        </button>
+                      )}
+                      {c.status === 'suspended' && (
+                        <button
+                          onClick={() => restore.mutate(c.id)}
+                          disabled={restore.isPending}
+                          className="rounded-lg border border-emerald-300 px-2.5 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 disabled:opacity-50"
+                          title="다시 게시합니다"
+                        >
+                          재게시
+                        </button>
+                      )}
+                      {(c.status === 'suspended' || c.status === 'rejected') && (
+                        <button
+                          onClick={() => archive.mutate(c.id)}
+                          disabled={archive.isPending}
+                          className="rounded-lg border border-slate-300 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+                          title="목록에서 내려 보관합니다"
+                        >
+                          보관
+                        </button>
+                      )}
+                      {c.status === 'archived' && (
+                        <button
+                          onClick={() => restore.mutate(c.id)}
+                          disabled={restore.isPending}
+                          className="rounded-lg border border-emerald-300 px-2.5 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 disabled:opacity-50"
+                          title="보관을 해제하고 검수 대기로 되돌립니다"
+                        >
+                          복구
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -149,6 +209,64 @@ export function OpsPage() {
       </section>
 
       {preview && <PreviewModal content={preview} onClose={() => setPreview(null)} />}
+      {suspendTarget && (
+        <SuspendModal
+          content={suspendTarget}
+          pending={suspend.isPending}
+          onCancel={() => setSuspendTarget(null)}
+          onConfirm={(reason) => suspend.mutate({ id: suspendTarget.id, reason })}
+        />
+      )}
     </main>
+  )
+}
+
+/** 게시중단(긴급철회) 사유 입력 모달 — 사유 필수 */
+function SuspendModal({
+  content,
+  pending,
+  onCancel,
+  onConfirm,
+}: {
+  content: Content
+  pending: boolean
+  onCancel: () => void
+  onConfirm: (reason: string) => void
+}) {
+  const [reason, setReason] = useState('')
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onCancel}>
+      <div
+        className="w-full max-w-md rounded-2xl bg-white p-5 shadow-modal"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3 className="mb-2 text-base font-bold text-brand-800">게시중단 — {content.title}</h3>
+        <p className="mb-3 text-sm text-gray-500">
+          게시본을 긴급 철회합니다. 카탈로그에서 즉시 제외되며, 사유는 감사 이력에 남습니다.
+        </p>
+        <textarea
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          rows={3}
+          placeholder="게시중단 사유를 입력하세요"
+          className="w-full rounded-lg border border-brand-200 px-3 py-2 text-sm outline-none focus:border-brand-500"
+        />
+        <div className="mt-3 flex justify-end gap-2">
+          <button
+            onClick={onCancel}
+            className="rounded-lg border border-gray-200 px-4 py-1.5 text-xs font-semibold text-gray-500 hover:bg-gray-50"
+          >
+            취소
+          </button>
+          <button
+            onClick={() => onConfirm(reason.trim())}
+            disabled={pending || !reason.trim()}
+            className="rounded-lg bg-orange-600 px-4 py-1.5 text-xs font-bold text-white hover:bg-orange-700 disabled:opacity-50"
+          >
+            {pending ? '처리 중…' : '게시중단'}
+          </button>
+        </div>
+      </div>
+    </div>
   )
 }

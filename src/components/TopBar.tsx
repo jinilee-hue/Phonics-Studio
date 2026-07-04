@@ -6,11 +6,14 @@ const TABS: Record<Role, { to: string; label: string }[]> = {
   creator: [
     { to: '/studio', label: '스튜디오' },
     { to: '/studio/mine', label: '내 콘텐츠' },
+    { to: '/studio/resources', label: '리소스' },
+    { to: '/studio/points', label: '포인트' },
   ],
   reviewer: [{ to: '/review', label: '검수' }],
   ops: [
     { to: '/ops', label: '운영' },
     { to: '/ops/settings', label: '검수 규칙' },
+    { to: '/ops/stats', label: '통계' },
   ],
 }
 

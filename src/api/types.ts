@@ -1,6 +1,13 @@
 export type Role = 'creator' | 'reviewer' | 'ops'
 export type Kind = 'html' | 'zip' | 'video' | 'url'
-export type Status = 'draft' | 'in_review' | 'approved' | 'rejected' | 'published'
+export type Status =
+  | 'draft'
+  | 'in_review'
+  | 'approved'
+  | 'rejected'
+  | 'published'
+  | 'suspended'
+  | 'archived'
 
 export interface User {
   id: number
@@ -140,3 +147,50 @@ export interface ScanResult {
 
 /** 승인 전 — 창작자가 in-place 수정 가능한 상태 (백엔드 EDITABLE_STATUSES와 일치) */
 export const EDITABLE_STATUSES: Status[] = ['draft', 'rejected']
+
+/** 리소스 라이브러리 항목 (GET /api/resources) */
+export interface Resource {
+  id: number
+  title: string
+  kind: 'image' | 'icon'
+  isPublic: boolean
+  ownerId: number
+  ownerName: string
+  imageUrl: string
+  createdAt: string
+}
+
+/** 포인트 조회 (GET /api/me/points) */
+export interface PointEntry {
+  contentId: number | null
+  eventType: string
+  amount: number
+  createdAt: string
+}
+export interface PointsResult {
+  points: number
+  entries: PointEntry[]
+}
+
+/** 운영 통계 (GET /api/stats) — studio DB 지표 */
+export interface TrendPoint {
+  date: string
+  count: number
+}
+export interface CreatorRank {
+  userId: number
+  name: string
+  registrations: number
+  approved: number
+  published: number
+}
+export interface Stats {
+  byStatus: Record<string, number>
+  totalContents: number
+  totalCreators: number
+  approvalRate: number
+  decisionsApprove: number
+  decisionsReject: number
+  submissionsTrend: TrendPoint[]
+  creatorRanking: CreatorRank[]
+}
