@@ -25,6 +25,10 @@ export function OpsPage() {
   const [filter, setFilter] = useState<Status | ''>('')
   const [preview, setPreview] = useState<Content | null>(null)
   const [suspendTarget, setSuspendTarget] = useState<Content | null>(null) // 긴급철회 사유 모달
+  const [actionError, setActionError] = useState<string | null>(null)
+
+  const onActionError = (e: unknown) =>
+    setActionError(e instanceof Error ? e.message : '작업을 처리하지 못했습니다.')
 
   const qc = useQueryClient()
   const { data: approved = [] } = useQuery<Content[]>({
@@ -32,7 +36,7 @@ export function OpsPage() {
     queryFn: () => api.get('/api/contents?status=approved'),
   })
   const { data: all = [] } = useQuery<Content[]>({
-    queryKey: ['contents', filter],
+    queryKey: ['contents', 'list', filter], // 'approved' 게시대기 큐 키와 충돌 방지
     queryFn: () => api.get(filter ? `/api/contents?status=${filter}` : '/api/contents'),
   })
 
@@ -42,23 +46,37 @@ export function OpsPage() {
   })
   const reset = useMutation({
     mutationFn: (id: number) => api.post<Content>(`/api/review/${id}/reset`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['contents'] }),
+    onSuccess: () => {
+      setActionError(null)
+      qc.invalidateQueries({ queryKey: ['contents'] })
+    },
+    onError: onActionError,
   })
   const suspend = useMutation({
     mutationFn: (v: { id: number; reason: string }) =>
       api.post<Content>(`/api/contents/${v.id}/suspend`, { reason: v.reason }),
     onSuccess: () => {
+      setActionError(null)
       qc.invalidateQueries({ queryKey: ['contents'] })
       setSuspendTarget(null)
     },
+    onError: onActionError,
   })
   const archive = useMutation({
     mutationFn: (id: number) => api.post<Content>(`/api/contents/${id}/archive`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['contents'] }),
+    onSuccess: () => {
+      setActionError(null)
+      qc.invalidateQueries({ queryKey: ['contents'] })
+    },
+    onError: onActionError,
   })
   const restore = useMutation({
     mutationFn: (id: number) => api.post<Content>(`/api/contents/${id}/restore`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['contents'] }),
+    onSuccess: () => {
+      setActionError(null)
+      qc.invalidateQueries({ queryKey: ['contents'] })
+    },
+    onError: onActionError,
   })
 
   return (
@@ -103,6 +121,12 @@ export function OpsPage() {
           </p>
         )}
       </section>
+
+      {actionError && (
+        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
+          작업 실패: {actionError}
+        </p>
+      )}
 
       <section>
         <div className="mb-3 flex items-center gap-3">

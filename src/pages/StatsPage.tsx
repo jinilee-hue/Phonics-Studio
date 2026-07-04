@@ -1,8 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../api/client'
-import type { Stats } from '../api/types'
+import type { Stats, Status } from '../api/types'
 import { STATUS_LABEL } from '../components/badges'
-import type { Status } from '../api/types'
 
 function Kpi({ label, value }: { label: string; value: string }) {
   return (
