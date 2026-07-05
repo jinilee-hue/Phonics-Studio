@@ -43,7 +43,7 @@ export function RubricSettingsPage() {
         <h3 className="mb-3 text-sm font-bold text-gray-700">차원별 가중치 (합계 {weightSum.toFixed(2)})</h3>
         <div className="space-y-2">
           {Object.entries(data.dimensions).map(([code, label]) => (
-            <div key={code} className="flex items-center gap-3">
+            <div key={code} className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
               <span className="w-24 text-sm text-gray-600">{label}</span>
               <input
                 type="number"
@@ -54,8 +54,8 @@ export function RubricSettingsPage() {
                 onChange={(e) => setWeights({ ...weights, [code]: Number(e.target.value) })}
                 className="w-24 rounded-lg border border-brand-200 px-2 py-1 text-sm outline-none focus:border-brand-500"
               />
-              <span className="text-xs text-gray-400">가중치</span>
-              <span className="ml-auto text-xs text-gray-400">하드게이트 최소점수</span>
+              <span className="whitespace-nowrap text-xs text-gray-400">가중치</span>
+              <span className="ml-auto whitespace-nowrap text-xs text-gray-400">하드게이트 최소점수</span>
               <input
                 type="number"
                 step="1"
