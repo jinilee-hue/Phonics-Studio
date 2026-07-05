@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../api/client'
 import type { Content, Preview } from '../api/types'
+import { resolveEmbed } from '../utils/embed'
 
 /** 미리보기 뷰포트 — iframe 엘리먼트 너비를 기기별 폭으로 제한해 반응형 레이아웃을 확인 */
 type Viewport = 'desktop' | 'tablet' | 'mobile'
@@ -124,26 +125,43 @@ export function PreviewModal({ content, onClose }: { content: Content; onClose: 
           <video src={preview.url} controls className="max-h-[60vh] w-full rounded-xl bg-black" />
         )}
 
-        {preview && content.kind === 'url' && (
-          <div className="space-y-3">
-            <ViewportFrame
-              src={preview.url}
-              sandbox="allow-scripts allow-same-origin"
-              title={content.title}
-              heightClass="h-[55vh]"
-              vpWidth={vpWidth}
-            />
-            <div className="flex items-center justify-between rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
-              <span>외부 사이트 정책(X-Frame-Options/CSP)에 따라 화면이 비어 보일 수 있습니다.</span>
-              <button
-                onClick={() => window.open(preview.url, '_blank', 'noopener,noreferrer')}
-                className="ml-3 shrink-0 rounded-lg bg-brand-600 px-3 py-1.5 font-semibold text-white hover:bg-brand-700"
+        {preview && content.kind === 'url' && (() => {
+          // YouTube/Vimeo는 embed URL로 변환하면 iframe 삽입이 허용되어 앱 안에서 바로 재생된다.
+          const embed = resolveEmbed(preview.url)
+          return (
+            <div className="space-y-3">
+              <ViewportFrame
+                src={embed.url}
+                sandbox={
+                  embed.embeddable
+                    ? 'allow-scripts allow-same-origin allow-presentation allow-popups'
+                    : 'allow-scripts allow-same-origin'
+                }
+                allow={embed.embeddable ? 'autoplay; encrypted-media; fullscreen; picture-in-picture' : undefined}
+                title={content.title}
+                heightClass="h-[55vh]"
+                vpWidth={vpWidth}
+              />
+              <div
+                className={`flex items-center justify-between rounded-lg px-3 py-2 text-xs ${
+                  embed.embeddable ? 'bg-brand-50 text-brand-600' : 'bg-amber-50 text-amber-700'
+                }`}
               >
-                새 탭에서 열기 ↗
-              </button>
+                {embed.embeddable ? (
+                  <span>영상 플레이어로 임베드해 재생합니다.</span>
+                ) : (
+                  <span>외부 사이트 정책(X-Frame-Options/CSP)에 따라 화면이 비어 보일 수 있습니다.</span>
+                )}
+                <button
+                  onClick={() => window.open(preview.url, '_blank', 'noopener,noreferrer')}
+                  className="ml-3 shrink-0 rounded-lg bg-brand-600 px-3 py-1.5 font-semibold text-white hover:bg-brand-700"
+                >
+                  새 탭에서 열기 ↗
+                </button>
+              </div>
             </div>
-          </div>
-        )}
+          )
+        })()}
       </div>
     </div>
   )
