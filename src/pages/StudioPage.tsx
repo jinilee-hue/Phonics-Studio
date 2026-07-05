@@ -367,7 +367,7 @@ export function StudioPage() {
           }}
           className="space-y-4"
         >
-          <div className="flex gap-4">
+          <div className="flex flex-col gap-4 sm:flex-row">
             <div className="flex shrink-0 flex-col gap-1.5">
               <ThumbBox preview={thumbPreview} urlMode={inputMode === 'url'} override={manualThumbUrl} />
               <label className="cursor-pointer rounded-lg border border-brand-200 py-1 text-center text-xs font-semibold text-brand-600 hover:bg-brand-50">
@@ -629,11 +629,11 @@ export function StudioPage() {
             </p>
           )}
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <button
               type="submit"
               disabled={register.isPending || !hasPrimarySkill || scanBlocked}
-              className="rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-brand-700 disabled:opacity-50"
+              className="shrink-0 whitespace-nowrap rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-brand-700 disabled:opacity-50"
             >
               {register.isPending ? '등록 중…' : '등록하기'}
             </button>
