@@ -97,7 +97,7 @@ export function OpsPage() {
               <span className="font-semibold">{c.title}</span>
               <KindBadge kind={c.kind} />
               <span className="text-xs text-gray-400">{c.ownerName}</span>
-              <span className="ml-auto flex gap-2">
+              <span className="ml-auto flex flex-wrap gap-2 [&>button]:shrink-0 [&>button]:whitespace-nowrap">
                 <button
                   onClick={() => setPreview(c)}
                   className="rounded-lg border border-brand-200 px-3 py-1.5 text-xs font-semibold text-brand-600 hover:bg-brand-50"
@@ -144,7 +144,7 @@ export function OpsPage() {
           </select>
         </div>
         <div className="overflow-x-auto rounded-2xl bg-white shadow-card">
-          <table className="w-full text-sm">
+          <table className="w-full min-w-[720px] text-sm">
             <thead>
               <tr className="border-b border-brand-100 text-left text-xs text-gray-400">
                 <th className="px-4 py-3">제목</th>
@@ -162,9 +162,9 @@ export function OpsPage() {
                   <td className="px-4 py-3 font-medium">{c.title}</td>
                   <td className="px-4 py-3"><KindBadge kind={c.kind} /></td>
                   <td className="px-4 py-3"><StatusBadge status={c.status} /></td>
-                  <td className="px-4 py-3 text-gray-500">{c.ownerName}</td>
-                  <td className="px-4 py-3 text-xs text-gray-400">{formatDate(c.submittedAt)}</td>
-                  <td className="px-4 py-3 text-xs text-gray-400">{formatDate(c.publishedAt)}</td>
+                  <td className="whitespace-nowrap px-4 py-3 text-gray-500">{c.ownerName}</td>
+                  <td className="whitespace-nowrap px-4 py-3 text-xs text-gray-400">{formatDate(c.submittedAt)}</td>
+                  <td className="whitespace-nowrap px-4 py-3 text-xs text-gray-400">{formatDate(c.publishedAt)}</td>
                   <td className="px-4 py-3">
                     <div className="flex flex-wrap gap-1.5">
                       {(c.status === 'approved' || c.status === 'rejected') && (
