@@ -46,7 +46,8 @@ function ViewportFrame({
   )
 }
 
-/** 테스트 플레이 미리보기 (F-07/F-12) — kind별 분기, iframe은 allow-same-origin 없이 격리(G). */
+/** 테스트 플레이 미리보기 (F-07/F-12) — kind별 분기. zip·html은 per-content 격리 서브도메인
+ *  오리진에서 서빙되므로 allow-same-origin이 안전(G), video는 element 직접 재생, url은 외부 임베드. */
 export function PreviewModal({ content, onClose }: { content: Content; onClose: () => void }) {
   const [viewport, setViewport] = useState<Viewport>('desktop')
   const vpWidth = VIEWPORTS.find((v) => v.id === viewport)?.width ?? null
@@ -98,23 +99,13 @@ export function PreviewModal({ content, onClose }: { content: Content; onClose: 
           <p className="py-16 text-center text-red-500">{error.message}</p>
         )}
 
-        {/* zip(SPA)은 격리된 서브도메인 오리진에서 서빙되므로 allow-same-origin이 안전(ES모듈·localStorage·상대 fetch 필요) */}
-        {preview && content.kind === 'zip' && (
+        {/* zip(SPA)·html 모두 격리된 서브도메인 오리진에서 서빙되므로 allow-same-origin이 안전
+            (마이크·ES모듈·localStorage·상대 fetch 필요) */}
+        {preview && (content.kind === 'zip' || content.kind === 'html') && (
           <ViewportFrame
             src={preview.url}
             sandbox="allow-scripts allow-same-origin allow-modals"
             allow="microphone; autoplay"
-            title={content.title}
-            heightClass="h-[60vh]"
-            vpWidth={vpWidth}
-          />
-        )}
-
-        {/* html(자체완결)은 플랫폼 오리진 서빙 → opaque origin 유지(allow-same-origin 금지) */}
-        {preview && content.kind === 'html' && (
-          <ViewportFrame
-            src={preview.url}
-            sandbox="allow-scripts"
             title={content.title}
             heightClass="h-[60vh]"
             vpWidth={vpWidth}
