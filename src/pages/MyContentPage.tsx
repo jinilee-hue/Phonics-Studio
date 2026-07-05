@@ -125,7 +125,7 @@ export function MyContentPage() {
                   {courseLabelFor(c.courseCode) !== c.courseCode && ` · ${courseLabelFor(c.courseCode)}`}
                 </span>
               )}
-              <span className="ml-auto flex gap-2">
+              <span className="ml-auto flex flex-wrap gap-2 [&>button]:shrink-0 [&>button]:whitespace-nowrap">
                 <button
                   onClick={() => setPreview(c)}
                   className="rounded-lg border border-brand-200 px-3 py-1.5 text-xs font-semibold text-brand-600 hover:bg-brand-50"
