@@ -49,33 +49,26 @@
 }
 
 html,
-body {
-  height: 100%;
+body,
+#root {
+  min-height: 100%;
 }
 
 body {
-  height: 100%;
+  min-height: 100vh;
   margin: 0;
-  overflow: hidden;
-  /* 배경 이미지를 뷰포트 전체를 채우는 body에 적용 — #app은 스케일·중앙정렬되므로 여백이 생겼음 */
-  background-color: var(--brand-soft); /* 이미지 로드 실패 시 폴백 */
+  background-color: var(--brand-soft);
   background-image:
     radial-gradient(circle at 18% 16%, rgb(255 209 102 / 0.2), transparent 24rem),
     linear-gradient(90deg, rgb(var(--page-tint) / 0.18), rgb(var(--page-tint) / 0.03)),
     url("./assets/studio-bg.webp");
+  background-attachment: fixed;
   background-position: center top;
   background-size: cover;
-  background-repeat: no-repeat;
   color: var(--ink);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
-}
-
-/* 고정 1280 폭 캔버스 — 콘텐츠 높이에 맞춰 전체를 축소하므로 내부 스크롤 없음(스크롤바 미노출).
-   배경 이미지는 body(뷰포트 전체)로 이동했고, 여기는 투명이어야 그 배경이 콘텐츠 뒤로 비친다. */
-#app {
-  background-color: transparent;
 }
 
 button,
@@ -200,11 +193,11 @@ button:disabled {
 
 .auth-shell {
   display: grid;
-  min-height: 800px;
+  min-height: 100svh;
   grid-template-columns: minmax(0, 1fr) minmax(22rem, 26rem);
   align-items: center;
-  gap: 4.8rem;
-  padding: 3.2rem;
+  gap: clamp(2rem, 6vw, 5rem);
+  padding: clamp(1.25rem, 4vw, 4rem);
 }
 
 .auth-copy-panel {
@@ -215,7 +208,7 @@ button:disabled {
     linear-gradient(135deg, rgb(255 255 255 / 0.72), rgb(255 255 255 / 0.28)),
     linear-gradient(135deg, rgb(255 209 102 / 0.18), rgb(255 138 118 / 0.12));
   box-shadow: 0 24px 70px rgb(69 56 119 / 0.16);
-  padding: 2.4rem;
+  padding: clamp(1.4rem, 3vw, 2.5rem);
   /* 배경 이미지가 선명하게 비치도록 blur 제거, 채도만 살짝 보정 */
   backdrop-filter: saturate(1.15);
 }
@@ -234,7 +227,7 @@ button:disabled {
   max-width: 12ch;
   margin: 1rem 0 0;
   color: var(--ink);
-  font-size: 5.5rem;
+  font-size: clamp(2.75rem, 7vw, 5.5rem);
   font-weight: 950;
   line-height: 0.9;
 }
@@ -248,7 +241,7 @@ button:disabled {
   max-width: 30rem;
   margin: 1.1rem 0 0;
   color: #4b4564;
-  font-size: 1.25rem;
+  font-size: clamp(1rem, 2vw, 1.25rem);
   font-weight: 700;
   line-height: 1.65;
 }
@@ -472,4 +465,49 @@ main:not(.auth-shell) .bg-white\/60,
 main:not(.auth-shell) .bg-brand-50,
 main:not(.auth-shell) .bg-brand-50\/40 {
   backdrop-filter: blur(10px) saturate(1.08);
+}
+
+@media (max-width: 820px) {
+  body {
+    background-attachment: scroll;
+    background-image:
+      linear-gradient(180deg, rgb(var(--page-tint) / 0.26), rgb(var(--page-tint) / 0.08)),
+      url("./assets/studio-bg.webp");
+  }
+
+  .app-topbar-inner {
+    flex-wrap: wrap;
+    gap: 0.65rem;
+  }
+
+  .app-nav {
+    order: 3;
+    width: 100%;
+    overflow-x: auto;
+  }
+
+  .app-user-menu {
+    margin-left: auto;
+  }
+
+  .auth-shell {
+    grid-template-columns: 1fr;
+    align-content: center;
+    gap: 1rem;
+    padding: 1rem;
+  }
+
+  .auth-copy-panel {
+    max-width: none;
+    padding: 1.1rem;
+  }
+
+  .auth-copy-panel h1 {
+    font-size: clamp(2.35rem, 15vw, 4rem);
+  }
+
+  .auth-form-panel {
+    width: 100%;
+    justify-self: stretch;
+  }
 }

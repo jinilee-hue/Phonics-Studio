@@ -109,7 +109,7 @@ export function ResourcePage() {
             아직 리소스가 없어요. 위에서 이미지를 올려보세요.
           </p>
         ) : (
-          <div className="grid grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
             {resources.map((r) => (
               <div key={r.id} className="overflow-hidden rounded-xl border border-brand-100 bg-white shadow-card">
                 <img src={r.imageUrl} alt={r.title} className="h-32 w-full bg-brand-50 object-contain" />
