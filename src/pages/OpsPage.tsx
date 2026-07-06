@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { api } from '../api/client'
 import type { Content, Status } from '../api/types'
-import { KindBadge, StatusBadge } from '../components/badges'
+import { AiBadge, KindBadge, StatusBadge } from '../components/badges'
 import { PreviewModal } from '../components/PreviewModal'
 
 const FILTERS: { value: Status | ''; label: string }[] = [
@@ -96,6 +96,7 @@ export function OpsPage() {
             <div key={c.id} className="flex flex-wrap items-center gap-2 rounded-2xl bg-white p-4 shadow-card">
               <span className="font-semibold">{c.title}</span>
               <KindBadge kind={c.kind} />
+              {c.usesAi && <AiBadge />}
               <span className="text-xs text-gray-400">{c.ownerName}</span>
               <span className="ml-auto flex flex-wrap gap-2 [&>button]:shrink-0 [&>button]:whitespace-nowrap">
                 <button
@@ -160,7 +161,12 @@ export function OpsPage() {
               {all.map((c) => (
                 <tr key={c.id} className="border-b border-brand-50 last:border-0">
                   <td className="px-4 py-3 font-medium">{c.title}</td>
-                  <td className="px-4 py-3"><KindBadge kind={c.kind} /></td>
+                  <td className="px-4 py-3">
+                    <div className="flex flex-wrap gap-1">
+                      <KindBadge kind={c.kind} />
+                      {c.usesAi && <AiBadge />}
+                    </div>
+                  </td>
                   <td className="px-4 py-3"><StatusBadge status={c.status} /></td>
                   <td className="whitespace-nowrap px-4 py-3 text-gray-500">{c.ownerName}</td>
                   <td className="whitespace-nowrap px-4 py-3 text-xs text-gray-400">{formatDate(c.submittedAt)}</td>

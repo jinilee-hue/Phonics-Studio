@@ -169,6 +169,7 @@ export function StudioPage() {
   const [fileType, setFileType] = useState<FileType>('html')
   const [regCourse, setRegCourse] = useState<string | null>(null)
   const [regSkills, setRegSkills] = useState<SkillTag[]>([])
+  const [usesAi, setUsesAi] = useState(false)
   const [aiInfo, setAiInfo] = useState<string | null>(null)
   const [fileError, setFileError] = useState<string | null>(null)
   const [thumbFile, setThumbFile] = useState<File | null>(null)
@@ -331,6 +332,7 @@ export function StudioPage() {
       }
       if (regCourse) form.set('courseCode', regCourse)
       form.set('skills', JSON.stringify(regSkills))
+      form.set('usesAi', String(usesAi))
       if (thumbFile) form.set('thumbUpload', thumbFile)
       return api.postForm<Content>('/api/contents', form)
     },
@@ -342,6 +344,7 @@ export function StudioPage() {
       setExternalUrl('')
       setRegCourse(null)
       setRegSkills([])
+      setUsesAi(false)
       setAiInfo(null)
       setThumbFile(null)
       setCandidates([])
@@ -367,7 +370,7 @@ export function StudioPage() {
           }}
           className="space-y-4"
         >
-          <div className="flex flex-col gap-4 sm:flex-row">
+          <div className="flex flex-row gap-4">
             <div className="flex shrink-0 flex-col gap-1.5">
               <ThumbBox preview={thumbPreview} urlMode={inputMode === 'url'} override={manualThumbUrl} />
               <label className="cursor-pointer rounded-lg border border-brand-200 py-1 text-center text-xs font-semibold text-brand-600 hover:bg-brand-50">
@@ -455,7 +458,7 @@ export function StudioPage() {
               </div>
             )}
 
-          <div className="flex gap-1 rounded-xl bg-brand-50 p-1 text-sm font-semibold sm:w-72">
+          <div className="flex gap-1 rounded-xl bg-brand-50 p-1 text-sm font-semibold w-72">
             {(['file', 'url'] as const).map((m) => (
               <button
                 key={m}
@@ -497,7 +500,7 @@ export function StudioPage() {
             )}
           {inputMode === 'file' && (
             <div>
-              <div className="flex gap-1 rounded-xl bg-brand-50 p-1 text-sm font-semibold sm:w-[26rem]">
+              <div className="flex gap-1 rounded-xl bg-brand-50 p-1 text-sm font-semibold w-[26rem]">
                 {FILE_TYPES.map((t) => (
                   <button
                     key={t.value}
@@ -616,7 +619,15 @@ export function StudioPage() {
             />
           </div>
 
-          
+          <label className="flex items-center gap-2 text-sm text-gray-600">
+            <input
+              type="checkbox"
+              checked={usesAi}
+              onChange={(e) => setUsesAi(e.target.checked)}
+              className="accent-brand-600"
+            />
+            이 콘텐츠는 AI를 사용해 제작되었습니다
+          </label>
 
           {register.isError && (
             <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">

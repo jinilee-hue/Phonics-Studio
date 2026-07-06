@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { api } from '../api/client'
 import type { Content } from '../api/types'
-import { KindBadge, StatusBadge } from '../components/badges'
+import { AiBadge, KindBadge, StatusBadge } from '../components/badges'
 import { PipelinePanel } from '../components/PipelinePanel'
 import { PreviewModal } from '../components/PreviewModal'
 
@@ -154,6 +154,7 @@ export function ReviewPage() {
               <span className="font-semibold">{c.title}</span>
               <KindBadge kind={c.kind} />
               <StatusBadge status={c.status} />
+              {c.usesAi && <AiBadge />}
               <span className="text-xs text-gray-400">
                 {c.ownerName} · 제출 {formatDate(c.submittedAt)}
               </span>

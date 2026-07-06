@@ -40,3 +40,12 @@ export function KindBadge({ kind }: { kind: Kind }) {
     </span>
   )
 }
+
+/** AI 사용 콘텐츠 표시 배지 — 공통 규약 §4 */
+export function AiBadge() {
+  return (
+    <span className="rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs font-semibold text-indigo-700">
+      AI 사용
+    </span>
+  )
+}

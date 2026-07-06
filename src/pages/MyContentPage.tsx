@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react'
 import { api } from '../api/client'
 import { EDITABLE_STATUSES } from '../api/types'
 import type { AnalyzeResult, Content, ContentUpdate, Course, SkillOption, SkillTag, Status } from '../api/types'
-import { KindBadge, STATUS_LABEL, StatusBadge } from '../components/badges'
+import { AiBadge, KindBadge, STATUS_LABEL, StatusBadge } from '../components/badges'
 import { PreviewModal } from '../components/PreviewModal'
 import { SecurityScanPanel } from '../components/SecurityScanPanel'
 import { SkillCoursePicker } from '../components/SkillCoursePicker'
@@ -119,6 +119,7 @@ export function MyContentPage() {
               <span className="font-semibold">{c.title}</span>
               <KindBadge kind={c.kind} />
               <StatusBadge status={c.status} />
+              {c.usesAi && <AiBadge />}
               {c.courseCode && (
                 <span className="rounded-md bg-violet-50 px-2 py-0.5 text-xs font-medium text-violet-700" title={c.courseCode}>
                   {c.courseCode}
@@ -217,6 +218,7 @@ function EditForm({ content, onClose }: { content: Content; onClose: () => void 
   const [description, setDescription] = useState(content.description)
   const [course, setCourse] = useState<string | null>(content.courseCode)
   const [skills, setSkills] = useState<SkillTag[]>(content.skills)
+  const [usesAi, setUsesAi] = useState(content.usesAi)
   const [analysis, setAnalysis] = useState<AnalyzeResult | null>(null)
   const [thumbVer, setThumbVer] = useState(0) // 교체 후 이미지 캐시 무효화용
 
@@ -260,6 +262,7 @@ function EditForm({ content, onClose }: { content: Content; onClose: () => void 
         description: description.trim(),
         courseCode: course ?? '',
         skills,
+        usesAi,
       }
       return api.patch<Content>(`/api/contents/${content.id}`, body)
     },
@@ -370,6 +373,16 @@ function EditForm({ content, onClose }: { content: Content; onClose: () => void 
         courseCode={course}
         onCourseChange={setCourse}
       />
+
+      <label className="flex items-center gap-2 text-xs font-semibold text-gray-500">
+        <input
+          type="checkbox"
+          checked={usesAi}
+          onChange={(e) => setUsesAi(e.target.checked)}
+          className="accent-brand-600"
+        />
+        이 콘텐츠는 AI를 사용해 제작되었습니다
+      </label>
 
       {save.isError && (
         <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">

@@ -36,6 +36,7 @@ export interface Content {
   courseCode: string | null
   hasThumb: boolean
   skills: SkillTag[]
+  usesAi: boolean
   createdAt: string
   submittedAt: string | null
   publishedAt: string | null
@@ -47,6 +48,7 @@ export interface ContentUpdate {
   gradeBand?: string | null
   courseCode?: string | null
   skills?: SkillTag[]
+  usesAi?: boolean
 }
 
 export interface Course {

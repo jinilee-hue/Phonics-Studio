@@ -45,7 +45,7 @@ export function StatsPage() {
         </p>
       </div>
 
-      <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <section className="grid grid-cols-4 gap-3">
         <Kpi label="총 콘텐츠" value={String(data.totalContents)} />
         <Kpi label="창작자 수" value={String(data.totalCreators)} />
         <Kpi label="승인율" value={`${Math.round(data.approvalRate * 100)}%`} />
@@ -153,7 +153,7 @@ export function StatsPage() {
           <p className="rounded-2xl bg-white p-6 text-center text-sm text-gray-400 shadow-card">플레이 지표 불러오는 중…</p>
         ) : (
           <>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="grid grid-cols-4 gap-3">
               <Kpi label="총 플레이" value={play.data.summary.totalPlays.toLocaleString()} />
               <Kpi label="학습자 수" value={String(play.data.summary.distinctLearners)} />
               <Kpi label="완료율" value={`${Math.round(play.data.summary.completionRate * 100)}%`} />

@@ -35,7 +35,7 @@ export function homeFor(role: Role): string {
 }
 
 function CenterNotice({ children }: { children: ReactNode }) {
-  return <div className="flex min-h-screen items-center justify-center text-brand-600">{children}</div>
+  return <div className="flex min-h-[800px] items-center justify-center text-brand-600">{children}</div>
 }
 
 /** 라우터 가드(F-15/F-18) — 프런트 이중 방어. 판정은 항상 서버가 한다. */
