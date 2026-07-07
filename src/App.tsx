@@ -48,7 +48,7 @@ export default function App() {
         <Route path="/studio/mine" element={<Protected roles={['creator']}><MyContentPage /></Protected>} />
         <Route path="/studio/resources" element={<Protected roles={['creator']}><ResourcePage /></Protected>} />
         <Route path="/studio/points" element={<Protected roles={['creator']}><MileagePage /></Protected>} />
-        <Route path="/review" element={<Protected roles={['reviewer']}><ReviewPage /></Protected>} />
+        <Route path="/review" element={<Protected roles={['ops']}><ReviewPage /></Protected>} />
         <Route path="/ops" element={<Protected roles={['ops']}><OpsPage /></Protected>} />
         <Route path="/ops/settings" element={<Protected roles={['ops']}><RubricSettingsPage /></Protected>} />
         <Route path="/ops/stats" element={<Protected roles={['ops']}><StatsPage /></Protected>} />

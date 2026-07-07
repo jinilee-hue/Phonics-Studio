@@ -1,4 +1,4 @@
-export type Role = 'creator' | 'reviewer' | 'ops'
+export type Role = 'creator' | 'ops'
 export type Kind = 'html' | 'zip' | 'video' | 'url'
 export type Status =
   | 'draft'
@@ -71,6 +71,7 @@ export interface AnalyzeSuggestion {
   courseCode: string | null
   skillCode: string | null
   confidence: number
+  thumbUrl?: string | null // URL 분석(analyze-url)에서만 — og:image data URL
 }
 
 export interface AnalyzeResult {

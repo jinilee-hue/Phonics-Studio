@@ -9,15 +9,15 @@ const TABS: Record<Role, { to: string; label: string }[]> = {
     { to: '/studio/resources', label: '리소스' },
     { to: '/studio/points', label: '포인트' },
   ],
-  reviewer: [{ to: '/review', label: '검수' }],
   ops: [
-    { to: '/ops', label: '운영' },
+    { to: '/review', label: '검수' },
+    { to: '/ops', label: '게시관리' },
     { to: '/ops/settings', label: '검수 규칙' },
     { to: '/ops/stats', label: '통계' },
   ],
 }
 
-const ROLE_LABEL: Record<Role, string> = { creator: '창작자', reviewer: '검수자', ops: '운영자' }
+const ROLE_LABEL: Record<Role, string> = { creator: '창작자', ops: '운영자' }
 
 export function TopBar({ user }: { user: User }) {
   const navigate = useNavigate()

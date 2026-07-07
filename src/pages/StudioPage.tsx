@@ -190,6 +190,67 @@ export function StudioPage() {
   // AI 분석 전용 시퀀스 — 썸네일 선택(후보/수동)과 독립. 썸네일 조작이 진행 중인 분석 결과를 폐기하지 않게 분리.
   const analyzeSeq = useRef(0)
 
+  // AI가 자동으로 채운 필드 추적 — 새 파일/URL 재선택 시 이 필드만 비워 재매핑을 허용(사용자 입력은 보존).
+  const aiFilledRef = useRef<Set<'title' | 'description' | 'course' | 'skills'>>(new Set())
+
+  const clearAiFilled = () => {
+    const f = aiFilledRef.current
+    if (f.has('title')) setTitle('')
+    if (f.has('description')) setDescription('')
+    if (f.has('course')) setRegCourse(null)
+    if (f.has('skills')) setRegSkills([])
+    f.clear()
+  }
+
+  // 분석 제안을 빈 필드에만 채우고(입력 보호), 채운 필드를 기록한다. 파일·URL 분석 공용.
+  const applySuggestion = (s: AnalyzeSuggestion) => {
+    const filled: string[] = []
+    const f = aiFilledRef.current
+    if (s.title && !title.trim()) { setTitle(s.title); f.add('title'); filled.push('제목') }
+    if (s.description && !description.trim()) { setDescription(s.description); f.add('description'); filled.push('설명') }
+    if (s.courseCode && !regCourse) { setRegCourse(s.courseCode); f.add('course'); filled.push('레벨') }
+    if (s.skillCode && regSkills.length === 0) {
+      setRegSkills([{ skillCode: s.skillCode, isPrimary: true }]); f.add('skills'); filled.push('스킬')
+    }
+    const hadSuggestion = !!(s.title || s.description || s.courseCode || s.skillCode)
+    setAiInfo(
+      filled.length
+        ? `✨ AI가 ${filled.join('·')}을(를) 자동 채웠어요 (확신도 ${Math.round((s.confidence || 0) * 100)}%) — 확인 후 수정할 수 있어요`
+        : hadSuggestion
+          ? 'AI가 제안했지만 이미 입력한 값이 있어 그대로 유지했어요.'
+          : 'AI가 분석했지만 자동 채울 항목을 찾지 못했어요. 직접 입력해주세요.',
+    )
+  }
+
+  // 비디오 첫 프레임을 캔버스로 캡처 → PNG File. 썸네일 시퀀스 가드로 오래된 캡처가 최신 선택을 덮지 않게 한다.
+  const captureVideoFrame = async (f: File, seq: number) => {
+    try {
+      const url = URL.createObjectURL(f)
+      const video = document.createElement('video')
+      video.muted = true
+      video.preload = 'auto'
+      video.src = url
+      await new Promise<void>((resolve, reject) => {
+        video.onloadeddata = () => resolve()
+        video.onerror = () => reject(new Error('video load error'))
+      })
+      const t = Math.min(1, (video.duration || 2) / 2) // 검은 첫 프레임 회피(중간 지점)
+      await new Promise<void>((resolve) => {
+        video.onseeked = () => resolve()
+        video.currentTime = t
+      })
+      const canvas = document.createElement('canvas')
+      canvas.width = video.videoWidth || 640
+      canvas.height = video.videoHeight || 360
+      canvas.getContext('2d')?.drawImage(video, 0, 0, canvas.width, canvas.height)
+      URL.revokeObjectURL(url)
+      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'))
+      if (blob && seq === thumbSeq.current) setThumbFile(new File([blob], 'thumb.png', { type: 'image/png' }))
+    } catch {
+      // 캡처 실패는 무시 — 사용자가 썸네일을 직접 등록할 수 있다
+    }
+  }
+
   // 파일 선택 시 등록 전 썸네일 후보 조회(html/zip). 첫 후보 자동 선택.
   const fetchCandidates = useMutation({
     mutationFn: (vars: { f: File; seq: number }) => {
@@ -217,26 +278,42 @@ export function StudioPage() {
     },
     onSuccess: (s, vars) => {
       if (vars.seq !== analyzeSeq.current) return // 더 최신 파일 선택이 있으면 폐기(순서 가드)
-      const filled: string[] = []
-      // 사용자가 이미 입력/선택한 값은 덮지 않고 빈 필드만 채운다(입력 보호)
-      if (s.title && !title.trim()) { setTitle(s.title); filled.push('제목') }
-      if (s.description && !description.trim()) { setDescription(s.description); filled.push('설명') }
-      if (s.courseCode && !regCourse) { setRegCourse(s.courseCode); filled.push('레벨') }
-      if (s.skillCode && regSkills.length === 0) { setRegSkills([{ skillCode: s.skillCode, isPrimary: true }]); filled.push('스킬') }
-      const hadSuggestion = !!(s.title || s.description || s.courseCode || s.skillCode)
-      setAiInfo(
-        filled.length
-          ? `✨ AI가 ${filled.join('·')}을(를) 자동 채웠어요 (확신도 ${Math.round((s.confidence || 0) * 100)}%) — 확인 후 수정할 수 있어요`
-          : hadSuggestion
-            ? 'AI가 제안했지만 이미 입력한 값이 있어 그대로 유지했어요.'
-            : 'AI가 분석했지만 자동 채울 항목을 찾지 못했어요. 직접 입력해주세요.',
-      )
+      applySuggestion(s)
     },
     onError: (_e, vars) => {
       if (vars.seq !== analyzeSeq.current) return // 이후 다른 파일을 골랐으면 무시
       setAiInfo('AI 자동 분석에 실패했어요. 제목·설명·레벨·스킬을 직접 입력해주세요.')
     },
   })
+
+  // 등록 전 URL 콘텐츠 AI 분석 — URL 입력 blur 시 실행. title·description·course·skill + og:image 썸네일 프리필.
+  const analyzeUrl = useMutation({
+    mutationFn: (vars: { url: string; seq: number; tseq: number }) =>
+      api.post<AnalyzeSuggestion>('/api/contents/analyze-url', { externalUrl: vars.url }),
+    onSuccess: async (s, vars) => {
+      if (vars.seq !== analyzeSeq.current) return
+      applySuggestion(s)
+      if (s.thumbUrl && vars.tseq === thumbSeq.current) {
+        const tf = await dataUrlToFile(s.thumbUrl, 'thumb.png')
+        if (vars.tseq === thumbSeq.current) setThumbFile(tf)
+      }
+    },
+    onError: (_e, vars) => {
+      if (vars.seq !== analyzeSeq.current) return
+      setAiInfo('URL 분석에 실패했어요. 제목·설명·레벨·스킬을 직접 입력해주세요.')
+    },
+  })
+
+  // 유효한 https URL을 입력하고 포커스를 벗어나면 자동 분석 실행(재분석 전 AI 필드·썸네일 초기화)
+  const triggerUrlAnalyze = () => {
+    const url = externalUrl.trim()
+    if (!/^https:\/\/\S/i.test(url)) return
+    const seq = ++analyzeSeq.current
+    const tseq = ++thumbSeq.current
+    clearAiFilled()
+    setThumbFile(null)
+    analyzeUrl.mutate({ url, seq, tseq })
+  }
 
   // 등록 전 정적 보안검사 — 파일 선택 시(html/zip) 실행. block 있으면 등록 버튼이 비활성된다.
   const scanFile = useMutation({
@@ -293,11 +370,17 @@ export function StudioPage() {
     setChosenCand(null)
     setThumbFile(null)
     setAiInfo(null)
+    clearAiFilled() // 이전 AI가 채운 필드만 비워 재매핑 허용(사용자 입력은 보존)
     if (thumbInput.current) thumbInput.current.value = ''
-    if (f && (fileType === 'html' || fileType === 'zip')) {
-      fetchCandidates.mutate({ f, seq })
+    if (f) {
+      // 썸네일 후보·보안검사는 html/zip 만, AI 분석은 모든 파일 타입(비디오 포함) 실행
+      if (fileType === 'html' || fileType === 'zip') {
+        fetchCandidates.mutate({ f, seq })
+        scanFile.mutate({ f })
+      } else if (fileType === 'video') {
+        void captureVideoFrame(f, seq) // 클라이언트에서 첫 프레임 캡처 → 썸네일
+      }
       analyzeFile.mutate({ f, seq: aseq })
-      scanFile.mutate({ f })
     }
   }
 
@@ -349,6 +432,7 @@ export function StudioPage() {
       setThumbFile(null)
       setCandidates([])
       setChosenCand(null)
+      aiFilledRef.current.clear()
       scanFile.reset()
       if (fileInput.current) fileInput.current.value = ''
       if (thumbInput.current) thumbInput.current.value = ''
@@ -403,24 +487,26 @@ export function StudioPage() {
             <div className="flex min-w-0 flex-1 flex-col gap-3">
               <input
                 value={title}
-                onChange={(e) => setTitle(e.target.value)}
+                onChange={(e) => { setTitle(e.target.value); aiFilledRef.current.delete('title') }}
                 placeholder="콘텐츠 제목"
                 required
                 className="rounded-xl border border-brand-200 px-3.5 py-2.5 text-sm outline-none focus:border-brand-500"
               />
               <input
                 value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                onChange={(e) => { setDescription(e.target.value); aiFilledRef.current.delete('description') }}
                 placeholder="간단한 설명 (선택)"
                 className="rounded-xl border border-brand-200 px-3.5 py-2.5 text-sm outline-none focus:border-brand-500"
               />
             </div>
           </div>
 
-          {/* AI 자동 분석 안내 — 파일 선택 시 자동 실행 */}
-          {inputMode === 'file' && (analyzeFile.isPending || aiInfo) && (
+          {/* AI 자동 분석 안내 — 파일 선택/URL 입력 시 자동 실행 */}
+          {(analyzeFile.isPending || analyzeUrl.isPending || aiInfo) && (
             <p className="rounded-lg bg-indigo-50 px-3 py-2 text-xs text-indigo-700">
-              {analyzeFile.isPending ? '✨ AI가 콘텐츠를 분석해 제목·설명·레벨·스킬을 채우는 중이에요…' : aiInfo}
+              {analyzeFile.isPending || analyzeUrl.isPending
+                ? '✨ AI가 콘텐츠를 분석해 제목·설명·레벨·스킬을 채우는 중이에요…'
+                : aiInfo}
             </p>
           )}
 
@@ -568,7 +654,8 @@ export function StudioPage() {
             <input
               value={externalUrl}
               onChange={(e) => setExternalUrl(e.target.value)}
-              placeholder="https:// 로 시작하는 콘텐츠 주소"
+              onBlur={triggerUrlAnalyze}
+              placeholder="https:// 로 시작하는 콘텐츠 주소 (입력 후 자동 분석)"
               required
               className="w-full rounded-xl border border-brand-200 px-3.5 py-2.5 text-sm outline-none focus:border-brand-500"
             />
@@ -613,9 +700,9 @@ export function StudioPage() {
           <div className="rounded-xl border border-brand-100 bg-brand-50/40 p-4">
             <SkillCoursePicker
               skills={regSkills}
-              onSkillsChange={setRegSkills}
+              onSkillsChange={(s) => { setRegSkills(s); aiFilledRef.current.delete('skills') }}
               courseCode={regCourse}
-              onCourseChange={setRegCourse}
+              onCourseChange={(c) => { setRegCourse(c); aiFilledRef.current.delete('course') }}
             />
           </div>
 
@@ -636,7 +723,7 @@ export function StudioPage() {
           )}
           {register.isSuccess && (
             <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-              등록되었습니다. <b>내 콘텐츠</b> 메뉴에서 <b>제출</b>하면 검수 대기열로 이동합니다.
+              등록되어 <b>검수 대기열</b>로 바로 제출되었습니다. <b>내 콘텐츠</b> 메뉴에서 진행 상태를 확인할 수 있어요.
             </p>
           )}
 

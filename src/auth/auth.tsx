@@ -31,7 +31,7 @@ export function useLogout() {
 
 /** 역할별 홈 라우트 (F-18) */
 export function homeFor(role: Role): string {
-  return { creator: '/studio', reviewer: '/review', ops: '/ops' }[role]
+  return { creator: '/studio', ops: '/ops' }[role]
 }
 
 function CenterNotice({ children }: { children: ReactNode }) {

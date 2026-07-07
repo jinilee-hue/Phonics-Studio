@@ -118,7 +118,7 @@ export function LoginPage() {
               />
             </label>
             {mode === 'signup' && (
-              <p className="text-xs text-gray-400">가입 시 창작자 계정으로 시작합니다. 검수자·운영자 권한은 관리자가 부여합니다.</p>
+              <p className="text-xs text-gray-400">가입 시 창작자 계정으로 시작합니다. 운영자 권한은 관리자가 부여합니다.</p>
             )}
             {error && <p className="auth-error">{error}</p>}
             <button type="submit" disabled={busy} className="auth-submit">
@@ -130,7 +130,6 @@ export function LoginPage() {
         <div className="demo-account-card">
           <span>데모 계정</span>
           <b>creator@demo.test</b>
-          <b>reviewer@demo.test</b>
           <b>ops@demo.test</b>
           <span>비밀번호 공통: demo1234</span>
         </div>
