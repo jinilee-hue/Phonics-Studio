@@ -92,7 +92,13 @@ export function RubricSettingsPage() {
         <p className="mt-1 text-xs text-gray-400">가중합이 이 값 미만이면 하드게이트 실패(반려 권고).</p>
       </section>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center justify-end gap-3">
+        {save.isSuccess && <span className="text-sm text-emerald-600">저장되었습니다.</span>}
+        {save.isError && (
+          <span className="text-sm text-red-600">
+            저장 실패: {save.error instanceof Error ? save.error.message : '오류'}
+          </span>
+        )}
         <button
           onClick={() => save.mutate()}
           disabled={save.isPending}
@@ -100,12 +106,6 @@ export function RubricSettingsPage() {
         >
           {save.isPending ? '저장 중…' : '규칙 저장'}
         </button>
-        {save.isSuccess && <span className="text-sm text-emerald-600">저장되었습니다.</span>}
-        {save.isError && (
-          <span className="text-sm text-red-600">
-            저장 실패: {save.error instanceof Error ? save.error.message : '오류'}
-          </span>
-        )}
       </div>
     </main>
   )

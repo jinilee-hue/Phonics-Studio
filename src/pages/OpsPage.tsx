@@ -5,8 +5,7 @@ import type { Content, Status } from '../api/types'
 import { AiBadge, KindBadge, StatusBadge } from '../components/badges'
 import { PreviewModal } from '../components/PreviewModal'
 
-const FILTERS: { value: Status | ''; label: string }[] = [
-  { value: '', label: '전체' },
+const STATUS_FILTERS: { value: Status; label: string }[] = [
   { value: 'draft', label: '작성 중' },
   { value: 'in_review', label: '검수 대기' },
   { value: 'approved', label: '승인됨' },
@@ -22,7 +21,7 @@ function formatDate(iso: string | null) {
 
 /** 운영자 콘솔 — 게시(F-09, 승인·게시 분리) + 전체 콘텐츠 현황(F-11) */
 export function OpsPage() {
-  const [filter, setFilter] = useState<Status | ''>('')
+  const [selectedFilters, setSelectedFilters] = useState<Set<Status>>(new Set())
   const [preview, setPreview] = useState<Content | null>(null)
   const [suspendTarget, setSuspendTarget] = useState<Content | null>(null) // 긴급철회 사유 모달
   const [actionError, setActionError] = useState<string | null>(null)
@@ -35,10 +34,24 @@ export function OpsPage() {
     queryKey: ['contents', 'approved'],
     queryFn: () => api.get('/api/contents?status=approved'),
   })
-  const { data: all = [] } = useQuery<Content[]>({
-    queryKey: ['contents', 'list', filter], // 'approved' 게시대기 큐 키와 충돌 방지
-    queryFn: () => api.get(filter ? `/api/contents?status=${filter}` : '/api/contents'),
+  const { data: allContents = [] } = useQuery<Content[]>({
+    queryKey: ['contents', 'list', 'ops-all'],
+    queryFn: () => api.get('/api/contents'),
   })
+
+  const shown =
+    selectedFilters.size === 0
+      ? allContents
+      : allContents.filter((c) => selectedFilters.has(c.status))
+
+  const toggleFilter = (status: Status) => {
+    setSelectedFilters((prev) => {
+      const next = new Set(prev)
+      if (next.has(status)) next.delete(status)
+      else next.add(status)
+      return next
+    })
+  }
 
   const publish = useMutation({
     mutationFn: (id: number) => api.post<Content>(`/api/contents/${id}/publish`),
@@ -83,12 +96,12 @@ export function OpsPage() {
     <main className="mx-auto max-w-5xl space-y-8 px-4 py-8">
       <section>
         <h2 className="mb-1 text-lg font-bold text-brand-800">게시 대기 ({approved.length})</h2>
-        <p className="mb-4 text-sm text-gray-500">
+        <p className="mb-4 text-sm text-gray-600">
           검토자가 승인한 콘텐츠입니다. 게시하면 학생(Play 서비스)에게 공개됩니다.
         </p>
         <div className="space-y-3">
           {approved.length === 0 && (
-            <p className="rounded-2xl bg-white p-8 text-center text-sm text-gray-400 shadow-card">
+            <p className="rounded-2xl bg-white p-8 text-center text-sm text-gray-500 shadow-card">
               게시를 기다리는 콘텐츠가 없습니다.
             </p>
           )}
@@ -97,7 +110,7 @@ export function OpsPage() {
               <span className="font-semibold">{c.title}</span>
               <KindBadge kind={c.kind} />
               {c.usesAi && <AiBadge />}
-              <span className="text-xs text-gray-400">{c.ownerName}</span>
+              <span className="text-xs font-medium text-gray-600">{c.ownerName}</span>
               <span className="ml-auto flex flex-wrap gap-2 [&>button]:shrink-0 [&>button]:whitespace-nowrap">
                 <button
                   onClick={() => setPreview(c)}
@@ -130,24 +143,40 @@ export function OpsPage() {
       )}
 
       <section>
-        <div className="mb-3 flex items-center gap-3">
-          <h2 className="text-lg font-bold text-brand-800">전체 콘텐츠</h2>
-          <select
-            value={filter}
-            onChange={(e) => setFilter(e.target.value as Status | '')}
-            className="rounded-lg border border-brand-200 px-2.5 py-1.5 text-xs outline-none focus:border-brand-500"
-          >
-            {FILTERS.map((f) => (
-              <option key={f.value} value={f.value}>
+        <div className="mb-3">
+          <h2 className="mb-3 text-lg font-bold text-brand-800">전체 콘텐츠</h2>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setSelectedFilters(new Set())}
+              className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
+                selectedFilters.size === 0
+                  ? 'bg-brand-600 text-white'
+                  : 'border border-brand-100 bg-white text-gray-700 hover:bg-brand-50'
+              }`}
+            >
+              전체
+            </button>
+            {STATUS_FILTERS.map((f) => (
+              <button
+                key={f.value}
+                type="button"
+                onClick={() => toggleFilter(f.value)}
+                className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
+                  selectedFilters.has(f.value)
+                    ? 'bg-brand-600 text-white'
+                    : 'border border-brand-100 bg-white text-gray-700 hover:bg-brand-50'
+                }`}
+              >
                 {f.label}
-              </option>
+              </button>
             ))}
-          </select>
+          </div>
         </div>
         <div className="overflow-x-auto rounded-2xl bg-white shadow-card">
           <table className="w-full min-w-[720px] text-sm">
             <thead>
-              <tr className="border-b border-brand-100 text-left text-xs text-gray-400">
+              <tr className="border-b border-brand-200 text-left text-xs font-semibold text-brand-800">
                 <th className="px-4 py-3">제목</th>
                 <th className="px-4 py-3">형식</th>
                 <th className="px-4 py-3">상태</th>
@@ -158,9 +187,9 @@ export function OpsPage() {
               </tr>
             </thead>
             <tbody>
-              {all.map((c) => (
+              {shown.map((c) => (
                 <tr key={c.id} className="border-b border-brand-50 last:border-0">
-                  <td className="px-4 py-3 font-medium">{c.title}</td>
+                  <td className="px-4 py-3 font-semibold text-brand-900">{c.title}</td>
                   <td className="px-4 py-3">
                     <div className="flex flex-wrap gap-1">
                       <KindBadge kind={c.kind} />
@@ -168,9 +197,9 @@ export function OpsPage() {
                     </div>
                   </td>
                   <td className="px-4 py-3"><StatusBadge status={c.status} /></td>
-                  <td className="whitespace-nowrap px-4 py-3 text-gray-500">{c.ownerName}</td>
-                  <td className="whitespace-nowrap px-4 py-3 text-xs text-gray-400">{formatDate(c.submittedAt)}</td>
-                  <td className="whitespace-nowrap px-4 py-3 text-xs text-gray-400">{formatDate(c.publishedAt)}</td>
+                  <td className="whitespace-nowrap px-4 py-3 text-gray-700">{c.ownerName}</td>
+                  <td className="whitespace-nowrap px-4 py-3 text-xs font-medium tabular-nums text-gray-600">{formatDate(c.submittedAt)}</td>
+                  <td className="whitespace-nowrap px-4 py-3 text-xs font-medium tabular-nums text-gray-600">{formatDate(c.publishedAt)}</td>
                   <td className="px-4 py-3">
                     <div className="flex flex-wrap gap-1.5">
                       {(c.status === 'approved' || c.status === 'rejected') && (
@@ -226,9 +255,9 @@ export function OpsPage() {
                   </td>
                 </tr>
               ))}
-              {all.length === 0 && (
+              {shown.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-gray-400">
+                  <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
                     콘텐츠가 없습니다.
                   </td>
                 </tr>
