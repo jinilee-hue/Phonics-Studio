@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { api } from '../api/client'
 import type { User } from '../api/types'
-import { homeFor } from '../auth/auth'
+import { DESIGN_ALL_EMAIL, DESIGN_USER, homeFor } from '../auth/auth'
 
 const inputCls = 'auth-input'
 
@@ -22,6 +22,12 @@ export function LoginPage() {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
+    // 디자인 우회: demo2 계정은 백엔드 호출 없이 전체 권한으로 통과
+    if (mode === 'login' && email.trim().toLowerCase() === DESIGN_ALL_EMAIL) {
+      qc.setQueryData(['me'], DESIGN_USER)
+      navigate('/studio', { replace: true })
+      return
+    }
     setBusy(true)
     try {
       const user =
@@ -131,6 +137,7 @@ export function LoginPage() {
           <span>데모 계정</span>
           <b>creator@demo.test</b>
           <b>ops@demo.test</b>
+          <b>demo2@test.com (전체 권한)</b>
           <span>비밀번호 공통: demo1234</span>
         </div>
       </section>

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { DESIGN_MODE, MOCK_PIPELINE_OVERALL, MOCK_PIPELINE_STAGES } from '../api/mock'
 import type { PipelineOverall, PipelineStage } from '../api/types'
 
 const STATUS_ICON: Record<PipelineStage['status'], { icon: string; cls: string }> = {
@@ -31,6 +32,14 @@ export function PipelinePanel({ contentId }: { contentId: number }) {
     setError(null)
     setRunning(true)
     doneRef.current = false
+    // 디자인 모드: 백엔드 SSE 대신 목 결과로 즉시 채운다(네트워크 호출 없음)
+    if (DESIGN_MODE) {
+      setStages(MOCK_PIPELINE_STAGES)
+      setOverall(MOCK_PIPELINE_OVERALL)
+      doneRef.current = true
+      setRunning(false)
+      return
+    }
     const es = new EventSource(`/api/review/${contentId}/pipeline/stream`, { withCredentials: true })
     esRef.current = es
     es.addEventListener('stage', (e) => setStages((prev) => [...prev, JSON.parse((e as MessageEvent).data)]))

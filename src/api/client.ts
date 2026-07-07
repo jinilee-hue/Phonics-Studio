@@ -1,3 +1,5 @@
+import { DESIGN_MODE, mockRequest } from './mock'
+
 export class ApiError extends Error {
   status: number
 
@@ -22,11 +24,18 @@ async function handle<T>(res: Response): Promise<T> {
   throw new ApiError(res.status, detail)
 }
 
+// 디자인 모드: 네트워크 대신 목 응답을 반환(모든 페이지가 백엔드 없이 렌더링됨)
+function mock<T>(method: string, path: string): Promise<T> {
+  return Promise.resolve(mockRequest(method, path) as T)
+}
+
 export const api = {
   get<T>(path: string): Promise<T> {
+    if (DESIGN_MODE) return mock<T>('GET', path)
     return fetch(path, { credentials: 'include' }).then((r) => handle<T>(r))
   },
   post<T>(path: string, body?: unknown): Promise<T> {
+    if (DESIGN_MODE) return mock<T>('POST', path)
     return fetch(path, {
       method: 'POST',
       credentials: 'include',
@@ -35,6 +44,7 @@ export const api = {
     }).then((r) => handle<T>(r))
   },
   patch<T>(path: string, body: unknown): Promise<T> {
+    if (DESIGN_MODE) return mock<T>('PATCH', path)
     return fetch(path, {
       method: 'PATCH',
       credentials: 'include',
@@ -43,6 +53,7 @@ export const api = {
     }).then((r) => handle<T>(r))
   },
   put<T>(path: string, body: unknown): Promise<T> {
+    if (DESIGN_MODE) return mock<T>('PUT', path)
     return fetch(path, {
       method: 'PUT',
       credentials: 'include',
@@ -51,9 +62,11 @@ export const api = {
     }).then((r) => handle<T>(r))
   },
   postForm<T>(path: string, form: FormData): Promise<T> {
+    if (DESIGN_MODE) return mock<T>('POST', path)
     return fetch(path, { method: 'POST', credentials: 'include', body: form }).then((r) => handle<T>(r))
   },
   del<T>(path: string): Promise<T> {
+    if (DESIGN_MODE) return mock<T>('DELETE', path)
     return fetch(path, { method: 'DELETE', credentials: 'include' }).then((r) => handle<T>(r))
   },
 }
