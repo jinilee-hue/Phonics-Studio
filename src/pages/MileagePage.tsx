@@ -19,7 +19,7 @@ export function MileagePage() {
   })
 
   return (
-    <main className="mx-auto max-w-3xl space-y-6 px-4 py-8">
+    <main className="mx-auto max-w-6xl space-y-6 px-4 py-8">
       <section className="rounded-2xl bg-white p-6 shadow-card">
         <h2 className="mb-1 text-lg font-bold text-brand-800">내 포인트</h2>
         <p className="text-sm text-gray-500">콘텐츠 등록·게시로 포인트가 적립됩니다.</p>

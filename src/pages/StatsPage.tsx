@@ -180,12 +180,12 @@ export function StatsPage() {
     onSuccess: () => play.refetch(),
   })
 
-  if (!data) return <main className="mx-auto max-w-5xl px-4 py-8 text-sm text-gray-400">불러오는 중…</main>
+  if (!data) return <main className="mx-auto max-w-6xl px-4 py-8 text-sm text-gray-400">불러오는 중…</main>
 
   const maxReg = Math.max(1, ...data.creatorRanking.map((c) => c.registrations))
 
   return (
-    <main className="mx-auto max-w-5xl space-y-8 px-4 py-8">
+    <main className="mx-auto max-w-6xl space-y-8 px-4 py-8">
       <div>
         <h2 className="text-lg font-bold text-brand-800">운영 통계</h2>
         <p className="text-sm text-gray-500">

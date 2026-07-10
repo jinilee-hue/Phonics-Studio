@@ -95,7 +95,7 @@ export function ReviewPage() {
     })
 
   return (
-    <main className="mx-auto max-w-5xl px-4 py-8">
+    <main className="mx-auto max-w-6xl px-4 py-8">
       <h2 className="mb-1 text-lg font-bold text-brand-800">검수 대기열 ({queue.length})</h2>
       <p className="mb-5 text-sm text-gray-500">
         격리 미리보기로 실행해보고, 자동검수 파이프라인의 근거를 참고해 승인/반려하세요. 판정은 사람이 합니다.

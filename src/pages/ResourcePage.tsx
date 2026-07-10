@@ -43,7 +43,7 @@ export function ResourcePage() {
   })
 
   return (
-    <main className="mx-auto max-w-5xl space-y-8 px-4 py-8">
+    <main className="mx-auto max-w-6xl space-y-8 px-4 py-8">
       <section className="rounded-2xl bg-white p-6 shadow-card">
         <h2 className="mb-1 text-lg font-bold text-brand-800">리소스 라이브러리</h2>
         <p className="mb-5 text-sm text-gray-500">

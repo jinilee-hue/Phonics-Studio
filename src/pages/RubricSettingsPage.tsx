@@ -28,12 +28,12 @@ export function RubricSettingsPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['rubric-settings'] }),
   })
 
-  if (!data) return <main className="mx-auto max-w-3xl px-4 py-8 text-gray-400">불러오는 중…</main>
+  if (!data) return <main className="mx-auto max-w-6xl px-4 py-8 text-gray-400">불러오는 중…</main>
 
   const weightSum = Object.values(weights).reduce((a, b) => a + Number(b || 0), 0)
 
   return (
-    <main className="mx-auto max-w-3xl space-y-6 px-4 py-8">
+    <main className="mx-auto max-w-6xl space-y-6 px-4 py-8">
       <div>
         <h2 className="text-lg font-bold text-brand-800">검수 규칙 편집</h2>
         <p className="text-sm text-gray-500">5차원 루브릭의 가중치·최소 가중합·하드게이트 임계를 조정합니다. (0~4 척도)</p>

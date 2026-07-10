@@ -31,7 +31,6 @@ export function TopBar({ user }: { user: User }) {
     <header className="app-topbar">
       <div className="app-topbar-inner">
         <span className="app-brand">
-          <span className="app-brand-mark">S</span>
           <span>
             PHONICS <b>STUDIO</b>
           </span>

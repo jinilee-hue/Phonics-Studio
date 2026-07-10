@@ -93,7 +93,7 @@ export function OpsPage() {
   })
 
   return (
-    <main className="mx-auto max-w-5xl space-y-8 px-4 py-8">
+    <main className="mx-auto max-w-6xl space-y-8 px-4 py-8">
       <section>
         <h2 className="mb-1 text-lg font-bold text-brand-800">게시 대기 ({approved.length})</h2>
         <p className="mb-4 text-sm text-gray-600">

@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
 import { api } from '../api/client'
 import type { AnalyzeSuggestion, Content, ScanResult, SkillTag } from '../api/types'
 import { SkillCoursePicker } from '../components/SkillCoursePicker'
@@ -7,10 +8,78 @@ import { ScanResultView } from '../components/SecurityScanPanel'
 
 type FileType = 'html' | 'zip' | 'video'
 
-const FILE_TYPES: { value: FileType; label: string; accept: string; hint: string }[] = [
-  { value: 'html', label: 'HTML', accept: '.html', hint: '단일 HTML 게임 파일' },
-  { value: 'zip', label: 'ZIP', accept: '.zip', hint: '정적 빌드(dist/out) 후 ZIP파일로 묶어주세요' },
-  { value: 'video', label: '비디오', accept: '.mp4,.webm', hint: 'mp4 · webm' },
+/** 라인 아이콘 — stroke 기반, currentColor를 상속해 카드 선택 상태 색을 따라감 */
+type IconType = (props: { className?: string }) => ReactNode
+function LineIcon({ className, children }: { className?: string; children: ReactNode }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.8}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className ?? 'h-5 w-5'}
+      aria-hidden="true"
+    >
+      {children}
+    </svg>
+  )
+}
+const IconUpload: IconType = (p) => (
+  <LineIcon {...p}>
+    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+    <polyline points="17 8 12 3 7 8" />
+    <line x1="12" y1="3" x2="12" y2="15" />
+  </LineIcon>
+)
+const IconLink: IconType = (p) => (
+  <LineIcon {...p}>
+    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+  </LineIcon>
+)
+const IconCode: IconType = (p) => (
+  <LineIcon {...p}>
+    <polyline points="16 18 22 12 16 6" />
+    <polyline points="8 6 2 12 8 18" />
+  </LineIcon>
+)
+const IconPackage: IconType = (p) => (
+  <LineIcon {...p}>
+    <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
+    <path d="m3.3 7 8.7 5 8.7-5" />
+    <path d="M12 22V12" />
+  </LineIcon>
+)
+const IconVideo: IconType = (p) => (
+  <LineIcon {...p}>
+    <polygon points="23 7 16 12 23 17 23 7" />
+    <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
+  </LineIcon>
+)
+const IconCheck: IconType = (p) => (
+  <LineIcon {...p}>
+    <polyline points="20 6 9 17 4 12" />
+  </LineIcon>
+)
+const IconPlus: IconType = (p) => (
+  <LineIcon {...p}>
+    <line x1="12" y1="5" x2="12" y2="19" />
+    <line x1="5" y1="12" x2="19" y2="12" />
+  </LineIcon>
+)
+
+const FILE_TYPES: { value: FileType; label: string; accept: string; hint: string; Icon: IconType }[] = [
+  { value: 'html', label: 'HTML', accept: '.html', hint: '단일 HTML 게임 파일', Icon: IconCode },
+  { value: 'zip', label: 'ZIP', accept: '.zip', hint: '정적 빌드(dist/out)를 ZIP으로', Icon: IconPackage },
+  { value: 'video', label: '비디오', accept: '.mp4,.webm', hint: 'mp4 · webm 영상', Icon: IconVideo },
+]
+
+/** 등록 방식(파일/URL) 선택 카드 데이터 */
+const INPUT_MODES: { value: 'file' | 'url'; label: string; desc: string; Icon: IconType }[] = [
+  { value: 'file', label: '파일 업로드', desc: 'HTML · ZIP · 비디오 파일', Icon: IconUpload },
+  { value: 'url', label: 'URL 등록', desc: '유튜브 · 비메오 등 외부 링크', Icon: IconLink },
 ]
 
 /** 업로드 크기 상한(50MB) — 백엔드 max_upload_bytes와 동일. 서버 왕복 전 즉시 피드백용 */
@@ -118,22 +187,24 @@ function useThumbPreview(file: File | null): ThumbPreview | null {
 
 function ThumbBox({
   preview,
-  urlMode,
   override,
 }: {
   preview: ThumbPreview | null
-  urlMode: boolean
   override?: string | null
 }) {
   if (override) {
     return (
-      <div className="flex h-40 w-56 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-brand-200 bg-brand-50/50">
+      <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-xl border border-brand-200 bg-brand-50/50">
         <img src={override} alt="썸네일" className="h-full w-full object-cover" />
       </div>
     )
   }
   return (
-    <div className="flex h-40 w-56 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-brand-200 bg-brand-50/50">
+    <div
+      className={`flex h-full w-full items-center justify-center overflow-hidden rounded-xl bg-brand-50/50 ${
+        preview ? 'border border-brand-200' : 'border-2 border-dashed border-brand-300'
+      }`}
+    >
       {preview?.kind === 'html' && (
         <iframe
           srcDoc={preview.src}
@@ -151,10 +222,82 @@ function ThumbBox({
           <div className="mt-1 px-1 text-[10px] text-gray-400">{preview.label}</div>
         </div>
       )}
-      {!preview && (
-        <span className="text-xs text-gray-400">{urlMode ? '🔗 URL 콘텐츠' : '썸네일'}</span>
-      )}
     </div>
+  )
+}
+
+/** 등록 폼의 단계 구분 카드 — 번호 배지 + 제목 + 부제로 섹션을 시각적으로 그룹핑 */
+function SectionCard({
+  step,
+  title,
+  desc,
+  children,
+}: {
+  step: number
+  title: string
+  desc?: string
+  children: ReactNode
+}) {
+  return (
+    <section className="rounded-2xl bg-white p-6 shadow-card">
+      <div className="mb-5 flex items-center gap-2.5">
+        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-100 text-xs font-bold text-brand-700">
+          {step}
+        </span>
+        <div>
+          <h3 className="text-base font-bold text-brand-800">{title}</h3>
+          {desc && <p className="mt-0.5 text-xs text-gray-400">{desc}</p>}
+        </div>
+      </div>
+      {children}
+    </section>
+  )
+}
+
+/** 선택형 카드 — 아이콘 + 제목 + 설명. 선택 시 브랜드 테두리·연보라 배경·체크로 강조 */
+function OptionCard({
+  selected,
+  Icon,
+  label,
+  desc,
+  onClick,
+  variant = 'tint',
+}: {
+  selected: boolean
+  Icon: IconType
+  label: string
+  desc: string
+  onClick: () => void
+  /** tint = 선택 시 연보라 배경(상위 등록 방식), filled = 선택 시 보라 면 채움(하위 파일 형식) */
+  variant?: 'tint' | 'filled'
+}) {
+  const filled = selected && variant === 'filled'
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={selected}
+      className={`flex items-center gap-3 rounded-xl border p-3.5 text-left transition ${
+        selected
+          ? filled
+            ? 'border-brand-600 bg-brand-600 ring-1 ring-brand-600'
+            : 'border-brand-500 bg-brand-50/60 ring-1 ring-brand-500'
+          : 'border-brand-200 hover:border-brand-400'
+      }`}
+    >
+      <Icon className={`h-7 w-7 shrink-0 ${filled ? 'text-white' : selected ? 'text-brand-600' : 'text-gray-400'}`} />
+      <span className="min-w-0 flex-1">
+        <span className="flex items-center gap-2">
+          <span
+            className={`text-sm font-bold ${filled ? 'text-white' : selected ? 'text-brand-700' : 'text-gray-600'}`}
+          >
+            {label}
+          </span>
+          {selected && <IconCheck className={`ml-auto h-4 w-4 shrink-0 ${filled ? 'text-white' : 'text-brand-600'}`} />}
+        </span>
+        <span className={`mt-0.5 block text-xs ${filled ? 'text-white/80' : 'text-gray-400'}`}>{desc}</span>
+      </span>
+    </button>
   )
 }
 
@@ -169,7 +312,7 @@ export function StudioPage() {
   const [fileType, setFileType] = useState<FileType>('html')
   const [regCourse, setRegCourse] = useState<string | null>(null)
   const [regSkills, setRegSkills] = useState<SkillTag[]>([])
-  const [usesAi, setUsesAi] = useState(false)
+  const [usesAi, setUsesAi] = useState(true)
   const [aiInfo, setAiInfo] = useState<string | null>(null)
   const [fileError, setFileError] = useState<string | null>(null)
   const [thumbFile, setThumbFile] = useState<File | null>(null)
@@ -181,6 +324,8 @@ export function StudioPage() {
 
   const hasPrimarySkill = regSkills.some((s) => s.isPrimary)
   const thumbPreview = useThumbPreview(inputMode === 'file' ? file : null)
+  // 썸네일 유무 — 있으면 박스에 미리보기+변경 버튼, 없으면 업로드 버튼+안내 표시
+  const hasThumb = !!manualThumbUrl || !!thumbPreview
   const acceptForType = FILE_TYPES.find((t) => t.value === fileType)?.accept ?? ''
 
   const qc = useQueryClient()
@@ -427,7 +572,7 @@ export function StudioPage() {
       setExternalUrl('')
       setRegCourse(null)
       setRegSkills([])
-      setUsesAi(false)
+      setUsesAi(true)
       setAiInfo(null)
       setThumbFile(null)
       setCandidates([])
@@ -440,127 +585,294 @@ export function StudioPage() {
   })
 
   return (
-    <main className="mx-auto max-w-5xl space-y-8 px-4 py-8">
-      <section className="rounded-2xl bg-white p-6 shadow-card">
-        <h2 className="mb-1 text-lg font-bold text-brand-800">새 콘텐츠 등록</h2>
-        <p className="mb-5 text-sm text-gray-500">
-          HTML · ZIP(정적 빌드) · 비디오(mp4/webm) 파일 50MB까지, 또는 HTTPS URL을 등록할 수 있어요.
-        </p>
+    <main className="mx-auto max-w-6xl space-y-6 px-4 py-8">
+      <h2 className="text-xl font-bold text-brand-800">콘텐츠 등록</h2>
 
-        <form
-          onSubmit={(e) => {
-            e.preventDefault()
-            register.mutate()
-          }}
-          className="space-y-4"
+      <form
+        onSubmit={(e) => {
+          e.preventDefault()
+          register.mutate()
+        }}
+        className="space-y-6"
+      >
+        {/* STEP 1 — 기본 정보 (F-02) */}
+        <SectionCard
+          step={1}
+          title="기본 정보"
+          desc="제목·설명과 썸네일을 설정하세요. 파일·URL 선택 시 AI가 자동으로 채워줄 수 있어요."
         >
-          <div className="flex flex-col gap-4 sm:flex-row">
-            <div className="flex shrink-0 flex-col gap-1.5">
-              <ThumbBox preview={thumbPreview} urlMode={inputMode === 'url'} override={manualThumbUrl} />
-              <label className="cursor-pointer rounded-lg border border-brand-200 py-1 text-center text-xs font-semibold text-brand-600 hover:bg-brand-50">
-                {thumbFile ? '썸네일 변경' : '썸네일 직접 등록'}
-                <input
-                  ref={thumbInput}
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp,image/gif"
-                  onChange={(e) => {
-                    thumbSeq.current++ // 진행 중인 후보 응답이 수동 선택을 덮지 않게
-                    setThumbFile(e.target.files?.[0] ?? null)
-                    setChosenCand(null)
-                  }}
-                  className="hidden"
-                />
-              </label>
-              {thumbFile && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setThumbFile(null)
-                    if (thumbInput.current) thumbInput.current.value = ''
-                  }}
-                  className="text-[10px] text-gray-400 hover:text-gray-600"
-                >
-                  자동 캡처로 되돌리기
-                </button>
-              )}
-            </div>
-            <div className="flex min-w-0 flex-1 flex-col gap-3">
-              <input
-                value={title}
-                onChange={(e) => { setTitle(e.target.value); aiFilledRef.current.delete('title') }}
-                placeholder="콘텐츠 제목"
-                required
-                className="rounded-xl border border-brand-200 px-3.5 py-2.5 text-sm outline-none focus:border-brand-500"
-              />
-              <input
-                value={description}
-                onChange={(e) => { setDescription(e.target.value); aiFilledRef.current.delete('description') }}
-                placeholder="간단한 설명 (선택)"
-                className="rounded-xl border border-brand-200 px-3.5 py-2.5 text-sm outline-none focus:border-brand-500"
-              />
-            </div>
-          </div>
-
-          {/* AI 자동 분석 안내 — 파일 선택/URL 입력 시 자동 실행 */}
-          {(analyzeFile.isPending || analyzeUrl.isPending || aiInfo) && (
-            <p className="rounded-lg bg-indigo-50 px-3 py-2 text-xs text-indigo-700">
-              {analyzeFile.isPending || analyzeUrl.isPending
-                ? '✨ AI가 콘텐츠를 분석해 제목·설명·레벨·스킬을 채우는 중이에요…'
-                : aiInfo}
-            </p>
-          )}
-
-          {/* 썸네일 후보 — 썸네일 블록 바로 아래(전체 너비) */}
-          {inputMode === 'file' &&
-            (fileType === 'html' || fileType === 'zip') &&
-            (fetchCandidates.isPending || candidates.length > 0) && (
-              <div className="rounded-xl border border-brand-100 bg-brand-50/40 p-3">
-                <p className="mb-2 text-xs font-semibold text-gray-500">
-                  썸네일 선택{' '}
-                  {fetchCandidates.isPending && <span className="font-normal text-gray-400">(이미지를 분석하는 중이에요…)</span>}
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {candidates.map((c) => (
-                    <button
-                      key={c.id}
-                      type="button"
-                      onClick={() => chooseCandidate(c)}
-                      className={`relative h-16 w-24 overflow-hidden rounded-lg border-2 ${
-                        chosenCand === c.id ? 'border-brand-500' : 'border-transparent hover:border-brand-300'
-                      }`}
-                    >
-                      <img src={c.dataUrl} alt="" className="h-full w-full object-cover" />
-                      <span className="absolute bottom-0 left-0 right-0 bg-black/50 text-center text-[9px] text-white">
-                        {c.source === 'render' ? '첫 화면' : '내장 이미지'}
+          <div className="space-y-4">
+            <div className="flex flex-col gap-5 sm:flex-row sm:items-stretch">
+              {/* 썸네일 — 빈 상태: 박스 안에 업로드 버튼+안내 / 선택 상태: 미리보기+변경 버튼.
+                  높이는 오른쪽 필드 열에 맞춰 stretch(설명 textarea 하단과 정렬), 모바일은 고정 h-40 */}
+              <div className="flex w-full shrink-0 flex-col gap-2 sm:w-72">
+                <div className="relative h-40 w-full sm:h-auto sm:flex-1">
+                  <ThumbBox preview={thumbPreview} override={manualThumbUrl} />
+                  {hasThumb ? (
+                    <label className="absolute bottom-2 right-2 cursor-pointer rounded-lg border border-brand-200 bg-white/85 px-3 py-1 text-[11px] font-semibold text-brand-600 shadow-sm backdrop-blur hover:bg-white">
+                      변경
+                      <input
+                        ref={thumbInput}
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp,image/gif"
+                        onChange={(e) => {
+                          thumbSeq.current++ // 진행 중인 후보 응답이 수동 선택을 덮지 않게
+                          setThumbFile(e.target.files?.[0] ?? null)
+                          setChosenCand(null)
+                        }}
+                        className="hidden"
+                      />
+                    </label>
+                  ) : (
+                    // 빈 상태: 박스 전체가 클릭 가능한 업로드 영역. 면으로 채운 + 원 + 타이틀형 문구 + 안내
+                    <label className="absolute inset-0 flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl px-5 text-center transition hover:bg-brand-50/60">
+                      <span className="flex h-11 w-11 items-center justify-center rounded-full bg-brand-100 text-brand-600">
+                        <IconPlus className="h-5 w-5" />
                       </span>
-                    </button>
+                      <span className="text-sm font-semibold text-brand-600">썸네일 직접 등록</span>
+                      <span className="text-[11px] leading-relaxed text-gray-400">
+                        미선택 시 등록 후 첫 화면이 자동 캡처돼요.
+                        <br />
+                        PNG · JPG · WebP · GIF · 최대 5MB (SVG 미지원).
+                      </span>
+                      <input
+                        ref={thumbInput}
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp,image/gif"
+                        onChange={(e) => {
+                          thumbSeq.current++ // 진행 중인 후보 응답이 수동 선택을 덮지 않게
+                          setThumbFile(e.target.files?.[0] ?? null)
+                          setChosenCand(null)
+                        }}
+                        className="hidden"
+                      />
+                    </label>
+                  )}
+                </div>
+                {thumbFile && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setThumbFile(null)
+                      if (thumbInput.current) thumbInput.current.value = ''
+                    }}
+                    className="self-start text-[11px] text-gray-400 hover:text-gray-600"
+                  >
+                    자동 캡처로 되돌리기
+                  </button>
+                )}
+              </div>
+              {/* 제목 · 설명 */}
+              <div className="flex min-w-0 flex-1 flex-col gap-4">
+                <label className="flex flex-col gap-1.5">
+                  <span className="text-xs font-semibold text-gray-500">
+                    제목 <span className="text-red-400">*</span>
+                  </span>
+                  <input
+                    value={title}
+                    onChange={(e) => { setTitle(e.target.value); aiFilledRef.current.delete('title') }}
+                    placeholder="콘텐츠 제목"
+                    required
+                    className="rounded-xl border border-brand-200 px-3.5 py-2.5 text-sm outline-none focus:border-brand-500"
+                  />
+                </label>
+                <label className="flex flex-col gap-1.5">
+                  <span className="text-xs font-semibold text-gray-500">
+                    설명 <span className="font-normal text-gray-400">(선택)</span>
+                  </span>
+                  <textarea
+                    value={description}
+                    onChange={(e) => { setDescription(e.target.value); aiFilledRef.current.delete('description') }}
+                    placeholder="간단한 설명"
+                    rows={2}
+                    className="resize-none rounded-xl border border-brand-200 px-3.5 py-2.5 text-sm outline-none focus:border-brand-500"
+                  />
+                </label>
+              </div>
+            </div>
+
+            {/* AI 자동 분석 안내 — 파일 선택/URL 입력 시 자동 실행 */}
+            {(analyzeFile.isPending || analyzeUrl.isPending || aiInfo) && (
+              <p className="rounded-lg bg-indigo-50 px-3 py-2 text-xs text-indigo-700">
+                {analyzeFile.isPending || analyzeUrl.isPending
+                  ? '✨ AI가 콘텐츠를 분석해 제목·설명·레벨·스킬을 채우는 중이에요…'
+                  : aiInfo}
+              </p>
+            )}
+
+            {/* 썸네일 후보 — html/zip 파일에서 추출 */}
+            {inputMode === 'file' &&
+              (fileType === 'html' || fileType === 'zip') &&
+              (fetchCandidates.isPending || candidates.length > 0) && (
+                <div className="rounded-xl border border-brand-100 bg-brand-50/40 p-3">
+                  <p className="mb-2 text-xs font-semibold text-gray-500">
+                    썸네일 선택{' '}
+                    {fetchCandidates.isPending && <span className="font-normal text-gray-400">(이미지를 분석하는 중이에요…)</span>}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {candidates.map((c) => (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => chooseCandidate(c)}
+                        className={`relative h-16 w-24 overflow-hidden rounded-lg border-2 ${
+                          chosenCand === c.id ? 'border-brand-500' : 'border-transparent hover:border-brand-300'
+                        }`}
+                      >
+                        <img src={c.dataUrl} alt="" className="h-full w-full object-cover" />
+                        <span className="absolute bottom-0 left-0 right-0 bg-black/50 text-center text-[9px] text-white">
+                          {c.source === 'render' ? '첫 화면' : '내장 이미지'}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                  {!fetchCandidates.isPending && candidates.length === 0 && (
+                    <p className="text-xs text-gray-400">
+                      추출된 이미지가 없어요. 등록 후 첫 화면을 자동 캡처합니다.
+                    </p>
+                  )}
+                </div>
+              )}
+          </div>
+        </SectionCard>
+
+        {/* STEP 2 — 콘텐츠 소스 (F-01) */}
+        <SectionCard
+          step={2}
+          title="콘텐츠 소스"
+          desc="HTML · ZIP(정적 빌드) · 비디오(mp4/webm) 파일 50MB까지, 또는 HTTPS URL을 등록할 수 있어요."
+        >
+          <div className="space-y-4">
+            {/* 등록 방식 선택 카드 (파일 / URL) */}
+            <div>
+              <p className="mb-2 text-xs font-semibold text-gray-500">등록 방식</p>
+              <div className="grid grid-cols-2 gap-3">
+                {INPUT_MODES.map((m) => (
+                  <OptionCard
+                    key={m.value}
+                    selected={inputMode === m.value}
+                    Icon={m.Icon}
+                    label={m.label}
+                    desc={m.desc}
+                    onClick={() => {
+                      setInputMode(m.value)
+                      onPickFile(null) // 모드 전환 시 파일·후보·썸네일 상태 초기화(URL에 stale thumbUpload 방지)
+                      setExternalUrl('')
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* 파일 형식 선택 카드 (힌트를 각 카드에 내장) */}
+            {inputMode === 'file' && (
+              <div>
+                <p className="mb-2 text-xs font-semibold text-gray-500">파일 형식</p>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  {FILE_TYPES.map((t) => (
+                    <OptionCard
+                      key={t.value}
+                      selected={fileType === t.value}
+                      variant="filled"
+                      Icon={t.Icon}
+                      label={t.label}
+                      desc={t.hint}
+                      onClick={() => {
+                        setFileType(t.value)
+                        onPickFile(null)
+                        if (fileInput.current) fileInput.current.value = ''
+                      }}
+                    />
                   ))}
                 </div>
-                {!fetchCandidates.isPending && candidates.length === 0 && (
-                  <p className="text-xs text-gray-400">
-                    추출된 이미지가 없어요. 등록 후 첫 화면을 자동 캡처합니다.
-                  </p>
-                )}
               </div>
             )}
 
-          <div className="flex gap-1 rounded-xl bg-brand-50 p-1 text-sm font-semibold sm:w-72">
-            {(['file', 'url'] as const).map((m) => (
-              <button
-                key={m}
-                type="button"
-                onClick={() => {
-                  setInputMode(m)
-                  onPickFile(null) // 모드 전환 시 파일·후보·썸네일 상태 초기화(URL에 stale thumbUpload 방지)
-                  setExternalUrl('')
+            {/* 드롭존 / URL 입력 */}
+            {inputMode === 'file' ? (
+              <div
+                onDragOver={(e) => {
+                  e.preventDefault()
+                  setDragOver(true)
                 }}
-                className={`flex-1 rounded-lg py-1.5 ${inputMode === m ? 'bg-white text-brand-700 shadow-sm' : 'text-gray-400'}`}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={(e) => {
+                  e.preventDefault()
+                  setDragOver(false)
+                  const dropped = e.dataTransfer.files[0]
+                  if (dropped) onPickFile(dropped)
+                }}
+                role="button"
+                tabIndex={0}
+                aria-label="파일 선택"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    fileInput.current?.click()
+                  }
+                }}
+                onClick={() => fileInput.current?.click()}
+                className={`cursor-pointer rounded-xl border-2 border-dashed px-4 py-8 text-center text-sm transition ${
+                  dragOver ? 'border-brand-500 bg-brand-50' : 'border-brand-200 hover:border-brand-400'
+                }`}
               >
-                {m === 'file' ? '파일 업로드' : 'URL 등록'}
-              </button>
-            ))}
-          </div>
-          {inputMode === 'file' && fileType === 'zip' && (
+                {file ? (
+                  <span className="font-semibold text-brand-700">
+                    📄 {file.name} <span className="font-normal text-gray-400">({formatSize(file.size)})</span>
+                  </span>
+                ) : (
+                  <span className="text-gray-400">파일을 끌어다 놓거나 클릭해서 선택 ({acceptForType})</span>
+                )}
+                <input
+                  ref={fileInput}
+                  type="file"
+                  accept={acceptForType}
+                  onChange={(e) => onPickFile(e.target.files?.[0] ?? null)}
+                  className="hidden"
+                />
+              </div>
+            ) : (
+              <input
+                value={externalUrl}
+                onChange={(e) => setExternalUrl(e.target.value)}
+                onBlur={triggerUrlAnalyze}
+                placeholder="https:// 로 시작하는 콘텐츠 주소 (입력 후 자동 분석)"
+                required
+                className="w-full rounded-xl border border-brand-200 px-3.5 py-2.5 text-sm outline-none focus:border-brand-500"
+              />
+            )}
+
+            {fileError && (
+              <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">⚠ {fileError}</p>
+            )}
+
+            {/* 등록 전 보안검사 — html/zip 파일 선택 시. block이 있으면 아래 등록 버튼이 잠긴다. */}
+            {inputMode === 'file' && (fileType === 'html' || fileType === 'zip') && file && (
+              <>
+                {scanFile.isPending && (
+                  <p className="rounded-lg bg-brand-50 px-3 py-2 text-sm text-brand-600">🔒 보안검사 중…</p>
+                )}
+                {scanFile.isError && (
+                  <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
+                    보안검사 실패: {scanFile.error instanceof Error ? scanFile.error.message : '알 수 없는 오류'}
+                  </p>
+                )}
+                {scanFile.data && (
+                  <div className="rounded-xl border border-brand-100 bg-white p-4">
+                    <h3 className="mb-2 text-sm font-bold text-brand-800">🔒 보안 검사</h3>
+                    <ScanResultView data={scanFile.data} />
+                    {scanFile.data.hasBlocking && (
+                      <p className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-xs font-semibold text-red-600">
+                        차단 항목이 있어 등록할 수 없어요. 위 항목을 수정한 뒤 파일을 다시 선택해주세요.
+                      </p>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* ZIP 업로드 시 콘텐츠에서 호출 가능한 플랫폼 API 안내 */}
+            {inputMode === 'file' && fileType === 'zip' && (
               <details className="rounded-xl border border-brand-100 bg-white px-4 py-2 text-sm" open>
                 <summary className="cursor-pointer font-semibold text-brand-700">
                   콘텐츠에서 사용할 수 있는 플랫폼 API
@@ -584,138 +896,45 @@ export function StudioPage() {
                 </button>
               </details>
             )}
-          {inputMode === 'file' && (
-            <div>
-              <div className="flex gap-1 rounded-xl bg-brand-50 p-1 text-sm font-semibold sm:w-[26rem]">
-                {FILE_TYPES.map((t) => (
-                  <button
-                    key={t.value}
-                    type="button"
-                    onClick={() => {
-                      setFileType(t.value)
-                      onPickFile(null)
-                      if (fileInput.current) fileInput.current.value = ''
-                    }}
-                    className={`flex-1 rounded-lg py-1.5 ${fileType === t.value ? 'bg-white text-brand-700 shadow-sm' : 'text-gray-400'}`}
-                  >
-                    {t.label}
-                  </button>
-                ))}
-              </div>
-              <p className="mt-1 text-xs text-gray-400">
-                {FILE_TYPES.find((t) => t.value === fileType)?.hint}
-              </p>
-            </div>
-          )}
-
-          {inputMode === 'file' ? (
-            <div
-              onDragOver={(e) => {
-                e.preventDefault()
-                setDragOver(true)
-              }}
-              onDragLeave={() => setDragOver(false)}
-              onDrop={(e) => {
-                e.preventDefault()
-                setDragOver(false)
-                const dropped = e.dataTransfer.files[0]
-                if (dropped) onPickFile(dropped)
-              }}
-              role="button"
-              tabIndex={0}
-              aria-label="파일 선택"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault()
-                  fileInput.current?.click()
-                }
-              }}
-              onClick={() => fileInput.current?.click()}
-              className={`cursor-pointer rounded-xl border-2 border-dashed px-4 py-8 text-center text-sm transition ${
-                dragOver ? 'border-brand-500 bg-brand-50' : 'border-brand-200 hover:border-brand-400'
-              }`}
-            >
-              {file ? (
-                <span className="font-semibold text-brand-700">
-                  📄 {file.name} <span className="font-normal text-gray-400">({formatSize(file.size)})</span>
-                </span>
-              ) : (
-                <span className="text-gray-400">파일을 끌어다 놓거나 클릭해서 선택 ({acceptForType})</span>
-              )}
-              <input
-                ref={fileInput}
-                type="file"
-                accept={acceptForType}
-                onChange={(e) => onPickFile(e.target.files?.[0] ?? null)}
-                className="hidden"
-              />
-            </div>
-          ) : (
-            <input
-              value={externalUrl}
-              onChange={(e) => setExternalUrl(e.target.value)}
-              onBlur={triggerUrlAnalyze}
-              placeholder="https:// 로 시작하는 콘텐츠 주소 (입력 후 자동 분석)"
-              required
-              className="w-full rounded-xl border border-brand-200 px-3.5 py-2.5 text-sm outline-none focus:border-brand-500"
-            />
-          )}
-
-          {fileError && (
-            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">⚠ {fileError}</p>
-          )}
-
-          {/* 등록 전 보안검사 — html/zip 파일 선택 시. block이 있으면 아래 등록 버튼이 잠긴다. */}
-          {inputMode === 'file' && (fileType === 'html' || fileType === 'zip') && file && (
-            <>
-              {scanFile.isPending && (
-                <p className="rounded-lg bg-brand-50 px-3 py-2 text-sm text-brand-600">🔒 보안검사 중…</p>
-              )}
-              {scanFile.isError && (
-                <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
-                  보안검사 실패: {scanFile.error instanceof Error ? scanFile.error.message : '알 수 없는 오류'}
-                </p>
-              )}
-              {scanFile.data && (
-                <div className="rounded-xl border border-brand-100 bg-white p-4">
-                  <h3 className="mb-2 text-sm font-bold text-brand-800">🔒 보안 검사</h3>
-                  <ScanResultView data={scanFile.data} />
-                  {scanFile.data.hasBlocking && (
-                    <p className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-xs font-semibold text-red-600">
-                      차단 항목이 있어 등록할 수 없어요. 위 항목을 수정한 뒤 파일을 다시 선택해주세요.
-                    </p>
-                  )}
-                </div>
-              )}
-            </>
-          )}
-
-
-
-          <p className="text-xs text-gray-400">
-            썸네일은 위에서 고르거나 직접 등록할 수 있어요. 미선택 시 등록 후 첫 화면이 자동 캡처됩니다.
-            직접 등록은 PNG · JPG · WebP · GIF · 최대 5MB (SVG 미지원).
-          </p>
-
-          <div className="rounded-xl border border-brand-100 bg-brand-50/40 p-4">
-            <SkillCoursePicker
-              skills={regSkills}
-              onSkillsChange={(s) => { setRegSkills(s); aiFilledRef.current.delete('skills') }}
-              courseCode={regCourse}
-              onCourseChange={(c) => { setRegCourse(c); aiFilledRef.current.delete('course') }}
-            />
           </div>
+        </SectionCard>
 
-          <label className="flex items-center gap-2 text-sm text-gray-600">
-            <input
-              type="checkbox"
-              checked={usesAi}
-              onChange={(e) => setUsesAi(e.target.checked)}
-              className="accent-brand-600"
-            />
+        {/* STEP 3 — 분류 (F-03) */}
+        <SectionCard step={3} title="분류" desc="레벨과 스킬을 지정하세요. 주 스킬 1개는 필수예요.">
+          <SkillCoursePicker
+            skills={regSkills}
+            onSkillsChange={(s) => { setRegSkills(s); aiFilledRef.current.delete('skills') }}
+            courseCode={regCourse}
+            onCourseChange={(c) => { setRegCourse(c); aiFilledRef.current.delete('course') }}
+          />
+        </SectionCard>
+
+        {/* 제출 준비 — AI 제작 선언 + 상태 안내 (흰 박스) */}
+        <div className="space-y-3 rounded-2xl bg-white p-5 shadow-card">
+          <label className="flex cursor-pointer items-center gap-2.5 text-sm text-gray-600">
+            <span className="relative inline-flex h-5 w-5 shrink-0 items-center justify-center">
+              <input
+                type="checkbox"
+                checked={usesAi}
+                onChange={(e) => setUsesAi(e.target.checked)}
+                className="peer absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
+              />
+              <span className="pointer-events-none absolute inset-0 rounded-[4px] border-2 border-brand-300 bg-white transition-colors peer-checked:border-brand-600 peer-checked:bg-brand-600" />
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={3.5}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="pointer-events-none relative h-3 w-3 text-white opacity-0 transition-opacity peer-checked:opacity-100"
+                aria-hidden="true"
+              >
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            </span>
             이 콘텐츠는 AI를 사용해 제작되었습니다
           </label>
-
           {register.isError && (
             <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
               등록 실패: {register.error instanceof Error ? register.error.message : '알 수 없는 오류'}
@@ -726,27 +945,27 @@ export function StudioPage() {
               등록되어 <b>검수 대기열</b>로 바로 제출되었습니다. <b>내 콘텐츠</b> 메뉴에서 진행 상태를 확인할 수 있어요.
             </p>
           )}
+          {hasPrimarySkill && scanFile.isPending && (
+            <p className="text-xs text-gray-400">보안검사 통과 후 등록할 수 있어요.</p>
+          )}
+          {hasPrimarySkill && scanFile.data?.hasBlocking && (
+            <p className="text-xs text-red-500">보안검사 차단 항목을 수정해야 등록할 수 있어요.</p>
+          )}
+        </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <button
-              type="submit"
-              disabled={register.isPending || !hasPrimarySkill || scanBlocked}
-              className="shrink-0 whitespace-nowrap rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-brand-700 disabled:opacity-50"
-            >
-              {register.isPending ? '등록 중…' : '등록하기'}
-            </button>
-            {!hasPrimarySkill && (
-              <span className="text-xs text-gray-400">주 스킬(★) 1개를 지정하면 등록할 수 있어요.</span>
-            )}
-            {hasPrimarySkill && scanFile.isPending && (
-              <span className="text-xs text-gray-400">보안검사 통과 후 등록할 수 있어요.</span>
-            )}
-            {hasPrimarySkill && scanFile.data?.hasBlocking && (
-              <span className="text-xs text-red-500">보안검사 차단 항목을 수정해야 등록할 수 있어요.</span>
-            )}
-          </div>
-        </form>
-      </section>
+        {/* 등록 버튼 — 흰 박스 밖, 맨 아래 중앙. 전체 폭은 아니고 텍스트·높이를 키운 CTA */}
+        <div className="flex justify-center">
+          <button
+            type="submit"
+            disabled={register.isPending || !hasPrimarySkill || scanBlocked}
+            /* 채도 높은 보라 단색 — 전역 그라디언트 규칙을 인라인으로 확실히 덮어 HTML 카드보다 도드라지게 */
+            style={{ backgroundColor: '#5b4a9e' }}
+            className="rounded-2xl px-16 py-4 text-xl font-bold tracking-wide text-white shadow-card transition hover:brightness-110"
+          >
+            {register.isPending ? '등록 중…' : '등록하기'}
+          </button>
+        </div>
+      </form>
     </main>
   )
 }

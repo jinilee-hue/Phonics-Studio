@@ -64,7 +64,7 @@ export function MyContentPage() {
   }, [courses])
 
   return (
-    <main className="mx-auto max-w-5xl space-y-6 px-4 py-8">
+    <main className="mx-auto max-w-6xl space-y-6 px-4 py-8">
       <div className="flex items-end justify-between">
         <div>
           <h2 className="text-lg font-bold text-brand-800">내 콘텐츠 ({mine.length})</h2>
