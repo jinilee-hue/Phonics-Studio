@@ -1,17 +1,51 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
+import type { ReactNode } from 'react'
 import { api } from '../api/client'
-import type { Content, Status } from '../api/types'
+import { mockThumb } from '../api/mock'
+import type { Content, Kind, Status } from '../api/types'
 import { AiBadge, KindBadge, StatusBadge } from '../components/badges'
 import { PreviewModal } from '../components/PreviewModal'
+import { Select } from '../components/Select'
 
-const STATUS_FILTERS: { value: Status; label: string }[] = [
-  { value: 'in_review', label: '검수 대기' },
-  { value: 'approved', label: '승인완료' },
-  { value: 'rejected', label: '반려' },
-  { value: 'published', label: 'OPEN' },
-  { value: 'suspended', label: '게시중단' },
-  { value: 'archived', label: '보관됨' },
+/** 썸네일 없을 때 형식별 그라디언트 플레이스홀더 */
+const KIND_THUMB_GRADIENT: Record<Kind, string> = {
+  html: 'from-sky-400 to-sky-600',
+  zip: 'from-violet-400 to-violet-600',
+  video: 'from-amber-400 to-amber-600',
+  url: 'from-pink-400 to-pink-600',
+}
+
+const KIND_FILTERS = [
+  { value: 'all', label: '전체 형식' },
+  { value: 'html', label: 'HTML' },
+  { value: 'zip', label: 'ZIP' },
+  { value: 'video', label: '비디오' },
+  { value: 'url', label: 'URL' },
+]
+
+/** 필터 탭용 라인 아이콘 래퍼 — currentColor 상속(활성 흰색/비활성 회색) */
+const Ic = ({ children }: { children: ReactNode }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5 shrink-0" aria-hidden="true">
+    {children}
+  </svg>
+)
+
+const ALL_ICON = (
+  <Ic>
+    <polygon points="12 2 2 7 12 12 22 7 12 2" />
+    <polyline points="2 17 12 22 22 17" />
+    <polyline points="2 12 12 17 22 12" />
+  </Ic>
+)
+
+const STATUS_FILTERS: { value: Status; label: string; icon: ReactNode }[] = [
+  { value: 'published', label: 'OPEN', icon: <Ic><circle cx="12" cy="12" r="10" /><line x1="2" y1="12" x2="22" y2="12" /><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" /></Ic> },
+  { value: 'in_review', label: '검수 대기', icon: <Ic><circle cx="12" cy="12" r="10" /><path d="M12 7v5l3.5 2" /></Ic> },
+  { value: 'approved', label: '승인완료', icon: <Ic><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></Ic> },
+  { value: 'suspended', label: '게시중단', icon: <Ic><circle cx="12" cy="12" r="10" /><line x1="10" y1="9" x2="10" y2="15" /><line x1="14" y1="9" x2="14" y2="15" /></Ic> },
+  { value: 'rejected', label: '반려', icon: <Ic><circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" /></Ic> },
+  { value: 'archived', label: '보관됨', icon: <Ic><polyline points="21 8 21 21 3 21 3 8" /><rect x="1" y="3" width="22" height="5" /><line x1="10" y1="12" x2="14" y2="12" /></Ic> },
 ]
 
 function formatDate(iso: string | null) {
@@ -21,6 +55,8 @@ function formatDate(iso: string | null) {
 /** 운영자 콘솔 — 게시(F-09, 승인·게시 분리) + 전체 콘텐츠 현황(F-11) */
 export function OpsPage() {
   const [selectedFilters, setSelectedFilters] = useState<Set<Status>>(new Set())
+  const [q, setQ] = useState('') // 제목·창작자 검색어
+  const [kindFilter, setKindFilter] = useState<Kind | 'all'>('all')
   const [preview, setPreview] = useState<Content | null>(null)
   const [suspendTarget, setSuspendTarget] = useState<Content | null>(null) // 긴급철회 사유 모달
   const [actionError, setActionError] = useState<string | null>(null)
@@ -38,10 +74,19 @@ export function OpsPage() {
     queryFn: () => api.get('/api/contents'),
   })
 
-  const shown =
-    selectedFilters.size === 0
-      ? allContents
-      : allContents.filter((c) => selectedFilters.has(c.status))
+  const needle = q.trim().toLowerCase()
+  const shown = allContents.filter((c) => {
+    if (selectedFilters.size > 0 && !selectedFilters.has(c.status)) return false
+    if (kindFilter !== 'all' && c.kind !== kindFilter) return false
+    if (needle && !`${c.title} ${c.ownerName}`.toLowerCase().includes(needle)) return false
+    return true
+  })
+
+  // 상태별 갯수(필터 탭 배지용) — 전체 목록 기준
+  const statusCounts = allContents.reduce((m, c) => {
+    m[c.status] = (m[c.status] ?? 0) + 1
+    return m
+  }, {} as Record<Status, number>)
 
   const toggleFilter = (status: Status) => {
     setSelectedFilters((prev) => {
@@ -98,47 +143,65 @@ export function OpsPage() {
         <p className="mb-4 text-sm text-gray-600">
           검토자가 승인한 콘텐츠입니다. 게시하면 학생(Play 서비스)에게 공개됩니다.
         </p>
-        <div className="space-y-3">
-          {approved.length === 0 && (
-            <p className="rounded-2xl bg-white p-8 text-center text-sm text-gray-500 shadow-card">
-              게시를 기다리는 콘텐츠가 없습니다.
-            </p>
-          )}
-          {approved.map((c) => (
-            <div key={c.id} className="flex flex-wrap items-center gap-2 rounded-2xl bg-white p-4 shadow-card">
-              <span className="font-semibold">{c.title}</span>
-              <KindBadge kind={c.kind} />
-              {c.usesAi && <AiBadge />}
-              <span className="text-xs font-medium text-gray-600">{c.ownerName}</span>
-              <span className="ml-auto flex flex-wrap gap-2 [&>button]:shrink-0 [&>button]:whitespace-nowrap">
-                <button
-                  onClick={() => setPreview(c)}
-                  className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-brand-200 px-5 py-2.5 text-sm font-semibold text-brand-600 hover:bg-brand-50"
-                >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true">
-                    <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" />
-                    <circle cx="12" cy="12" r="3" />
-                  </svg>
-                  미리보기
-                </button>
-                <button
-                  onClick={() => publish.mutate(c.id)}
-                  disabled={publish.isPending}
-                  style={{ backgroundColor: '#6f5bc8', borderRadius: '0.5rem' }}
-                  className="inline-flex items-center justify-center gap-1.5 px-5 py-2.5 text-sm font-bold text-white transition hover:brightness-110 disabled:opacity-50"
-                >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true">
-                    <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z" />
-                    <path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z" />
-                    <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0" />
-                    <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5" />
-                  </svg>
-                  게시
-                </button>
-              </span>
-            </div>
-          ))}
-        </div>
+        {approved.length === 0 ? (
+          <p className="rounded-2xl bg-white p-8 text-center text-sm text-gray-500 shadow-card">
+            게시를 기다리는 콘텐츠가 없습니다.
+          </p>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {approved.map((c) => {
+              const thumb = mockThumb(c.id) ?? (c.hasThumb ? `/api/contents/${c.id}/thumb` : null)
+              return (
+                <div key={c.id} className="flex flex-col overflow-hidden rounded-2xl bg-white shadow-card">
+                  {/* 썸네일 */}
+                  <div className="aspect-video w-full overflow-hidden bg-brand-50">
+                    {thumb ? (
+                      <img src={thumb} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      <div className={`flex h-full w-full items-center justify-center bg-gradient-to-br ${KIND_THUMB_GRADIENT[c.kind]} text-lg font-bold text-white/90`}>
+                        {c.kind.toUpperCase()}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex flex-1 flex-col p-4">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="font-semibold text-brand-900">{c.title}</span>
+                      <KindBadge kind={c.kind} />
+                      {c.usesAi && <AiBadge />}
+                    </div>
+                    <span className="mt-1 text-xs font-medium text-gray-500">{c.ownerName}</span>
+                    <div className="mt-4 flex gap-2 [&>button]:flex-1">
+                      <button
+                        onClick={() => setPreview(c)}
+                        className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-brand-200 py-2.5 text-sm font-semibold text-brand-600 hover:bg-brand-50"
+                      >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true">
+                          <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" />
+                          <circle cx="12" cy="12" r="3" />
+                        </svg>
+                        미리보기
+                      </button>
+                      <button
+                        onClick={() => publish.mutate(c.id)}
+                        disabled={publish.isPending}
+                        style={{ backgroundColor: '#6f5bc8', borderRadius: '0.5rem' }}
+                        className="inline-flex items-center justify-center gap-1.5 py-2.5 text-sm font-bold text-white transition hover:brightness-110 disabled:opacity-50"
+                      >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true">
+                          <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z" />
+                          <path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z" />
+                          <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0" />
+                          <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5" />
+                        </svg>
+                        게시
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
         {publish.isError && (
           <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
             게시 실패: {publish.error instanceof Error ? publish.error.message : '알 수 없는 오류'}
@@ -155,32 +218,56 @@ export function OpsPage() {
       <section>
         <div className="mb-3">
           <h2 className="mb-3 text-[22px] font-bold text-brand-800">전체 콘텐츠</h2>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-1.5">
             <button
               type="button"
               onClick={() => setSelectedFilters(new Set())}
-              className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
+              style={{ borderRadius: '0.5rem' }}
+              className={`inline-flex items-center gap-1.5 px-3 py-2 text-sm font-semibold ${
                 selectedFilters.size === 0
                   ? 'bg-brand-600 text-white'
                   : 'border border-brand-100 bg-white text-gray-700 hover:bg-brand-50'
               }`}
             >
+              {ALL_ICON}
               전체
+              <span className="tabular-nums opacity-70">{allContents.length}</span>
             </button>
             {STATUS_FILTERS.map((f) => (
               <button
                 key={f.value}
                 type="button"
                 onClick={() => toggleFilter(f.value)}
-                className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
+                style={{ borderRadius: '0.5rem' }}
+                className={`inline-flex items-center gap-1.5 px-3 py-2 text-sm font-semibold ${
                   selectedFilters.has(f.value)
                     ? 'bg-brand-600 text-white'
                     : 'border border-brand-100 bg-white text-gray-700 hover:bg-brand-50'
                 }`}
               >
+                {f.icon}
                 {f.label}
+                <span className="tabular-nums opacity-70">{statusCounts[f.value] ?? 0}</span>
               </button>
             ))}
+            <div className="ml-auto flex items-center gap-2">
+              <Select value={kindFilter} onChange={(v) => setKindFilter(v as Kind | 'all')} options={KIND_FILTERS} />
+              <div className="relative w-44">
+                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true">
+                    <circle cx="11" cy="11" r="7" />
+                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                  </svg>
+                </span>
+                <input
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                  placeholder="제목·창작자 검색"
+                  style={{ borderRadius: '0.5rem' }}
+                  className="w-full border border-brand-200 py-2 pl-9 pr-3 text-sm outline-none focus:border-brand-500"
+                />
+              </div>
+            </div>
           </div>
         </div>
         <div className="overflow-x-auto">
@@ -206,81 +293,88 @@ export function OpsPage() {
                       {c.usesAi && <AiBadge />}
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-center"><StatusBadge status={c.status} /></td>
+                  <td className="px-4 py-3"><div className="flex justify-center"><StatusBadge status={c.status} iconOnly /></div></td>
                   <td className="whitespace-nowrap px-4 py-3 text-center text-gray-700">{c.ownerName}</td>
-                  <td className="whitespace-nowrap px-4 py-3 text-center text-xs font-medium tabular-nums text-gray-600">{formatDate(c.submittedAt)}</td>
-                  <td className="whitespace-nowrap px-4 py-3 text-center text-xs font-medium tabular-nums text-gray-600">{formatDate(c.publishedAt)}</td>
+                  <td className="whitespace-nowrap px-4 py-3 text-center text-sm font-medium tabular-nums text-gray-600">{formatDate(c.submittedAt)}</td>
+                  <td className="whitespace-nowrap px-4 py-3 text-center text-sm font-medium tabular-nums text-gray-600">{formatDate(c.publishedAt)}</td>
                   <td className="px-4 py-3">
                     <div className="flex flex-wrap justify-center gap-1.5">
                       {(c.status === 'approved' || c.status === 'rejected') && (
                         <button
                           onClick={() => reset.mutate(c.id)}
                           disabled={reset.isPending}
-                          className="inline-flex items-center gap-1 rounded-lg border border-brand-200 px-2.5 py-1 text-xs font-semibold text-brand-600 hover:bg-brand-50 disabled:opacity-50"
-                          title="승인/반려 판정을 취소하고 검수 대기로 되돌립니다"
+                          style={{ backgroundColor: '#374151' }}
+                          className="grid h-8 w-8 place-items-center rounded-lg text-white transition hover:brightness-110 disabled:opacity-50"
+                          title="되돌리기 — 승인/반려 판정을 취소하고 검수 대기로 되돌립니다"
+                          aria-label="되돌리기"
                         >
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5" aria-hidden="true">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true">
                             <polyline points="1 4 1 10 7 10" />
                             <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
                           </svg>
-                          되돌리기
                         </button>
                       )}
                       {c.status === 'published' && (
                         <button
                           onClick={() => setSuspendTarget(c)}
-                          className="inline-flex items-center gap-1 rounded-lg border border-orange-300 px-2.5 py-1 text-xs font-semibold text-orange-700 hover:bg-orange-50"
-                          title="게시본을 긴급 철회합니다(카탈로그에서 즉시 제외)"
+                          style={{ backgroundColor: '#f97316' }}
+                          className="grid h-8 w-8 place-items-center rounded-lg text-white transition hover:brightness-110"
+                          title="게시중단 — 게시본을 긴급 철회합니다(카탈로그에서 즉시 제외)"
+                          aria-label="게시중단"
                         >
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5" aria-hidden="true">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true">
                             <circle cx="12" cy="12" r="10" />
                             <line x1="10" y1="9" x2="10" y2="15" />
                             <line x1="14" y1="9" x2="14" y2="15" />
                           </svg>
-                          게시중단
                         </button>
                       )}
                       {c.status === 'suspended' && (
                         <button
                           onClick={() => restore.mutate(c.id)}
                           disabled={restore.isPending}
-                          className="inline-flex items-center gap-1 rounded-lg border border-brand-200 px-2.5 py-1 text-xs font-semibold text-brand-600 hover:bg-brand-50 disabled:opacity-50"
-                          title="다시 게시합니다"
+                          style={{ backgroundColor: '#6f5bc8' }}
+                          className="grid h-8 w-8 place-items-center rounded-lg text-white transition hover:brightness-110 disabled:opacity-50"
+                          title="재게시 — 다시 게시합니다"
+                          aria-label="재게시"
                         >
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5" aria-hidden="true">
-                            <polyline points="23 4 23 10 17 10" />
-                            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true">
+                            <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z" />
+                            <path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z" />
+                            <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0" />
+                            <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5" />
                           </svg>
-                          재게시
                         </button>
                       )}
                       {(c.status === 'suspended' || c.status === 'rejected') && (
                         <button
                           onClick={() => archive.mutate(c.id)}
                           disabled={archive.isPending}
-                          className="inline-flex items-center gap-1 rounded-lg border border-slate-300 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50"
-                          title="목록에서 내려 보관합니다"
+                          style={{ backgroundColor: '#9ca3af' }}
+                          className="grid h-8 w-8 place-items-center rounded-lg text-white transition hover:brightness-110 disabled:opacity-50"
+                          title="보관 — 목록에서 내려 보관합니다"
+                          aria-label="보관"
                         >
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5" aria-hidden="true">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true">
                             <polyline points="21 8 21 21 3 21 3 8" />
                             <rect x="1" y="3" width="22" height="5" />
                             <line x1="10" y1="12" x2="14" y2="12" />
                           </svg>
-                          보관
                         </button>
                       )}
                       {c.status === 'archived' && (
                         <button
                           onClick={() => restore.mutate(c.id)}
                           disabled={restore.isPending}
-                          className="inline-flex items-center gap-1 rounded-lg border border-brand-200 px-2.5 py-1 text-xs font-semibold text-brand-600 hover:bg-brand-50 disabled:opacity-50"
-                          title="보관을 해제하고 검수 대기로 되돌립니다"
+                          style={{ backgroundColor: '#374151' }}
+                          className="grid h-8 w-8 place-items-center rounded-lg text-white transition hover:brightness-110 disabled:opacity-50"
+                          title="복구 — 보관을 해제하고 검수 대기로 되돌립니다"
+                          aria-label="복구"
                         >
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5" aria-hidden="true">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true">
                             <polyline points="1 4 1 10 7 10" />
                             <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
                           </svg>
-                          복구
                         </button>
                       )}
                     </div>

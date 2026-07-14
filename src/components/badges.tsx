@@ -1,15 +1,15 @@
 import type { ReactNode } from 'react'
 import type { Kind, Status } from '../api/types'
 
-// cls: StatusCircle용(원형 색 배경) / text·line: StatusBadge용(흰 반투명 배경 + 상태별 텍스트 색 + 2px 밑줄)
-const STATUS_STYLE: Record<Status, { label: string; cls: string; text: string; line: string }> = {
-  draft: { label: '작성중', cls: 'bg-gray-100 text-gray-600', text: 'text-brand-600', line: 'decoration-brand-400' },
-  in_review: { label: '검수대기', cls: 'bg-amber-100 text-amber-700', text: 'text-blue-600', line: 'decoration-blue-500' },
-  approved: { label: '승인완료', cls: 'bg-sky-100 text-sky-700', text: 'text-emerald-600', line: 'decoration-emerald-500' },
-  rejected: { label: '반려', cls: 'bg-red-100 text-red-700', text: 'text-red-700', line: 'decoration-red-500' },
-  published: { label: 'OPEN', cls: 'bg-emerald-100 text-emerald-700', text: 'text-gray-900', line: 'decoration-gray-400' },
-  suspended: { label: '게시중단', cls: 'bg-orange-100 text-orange-700', text: 'text-orange-600', line: 'decoration-orange-500' },
-  archived: { label: '보관됨', cls: 'bg-slate-200 text-slate-600', text: 'text-slate-600', line: 'decoration-slate-400' },
+// cls: StatusCircle용(원형 색 배경) / text·line: StatusBadge용 / tint: 아이콘 색 10% 배경(icon-only 칩)
+const STATUS_STYLE: Record<Status, { label: string; cls: string; text: string; line: string; tint: string }> = {
+  draft: { label: '작성중', cls: 'bg-gray-100 text-gray-600', text: 'text-brand-600', line: 'decoration-brand-400', tint: 'bg-brand-500/10' },
+  in_review: { label: '검수대기', cls: 'bg-amber-100 text-amber-700', text: 'text-blue-600', line: 'decoration-blue-500', tint: 'bg-blue-500/10' },
+  approved: { label: '승인완료', cls: 'bg-sky-100 text-sky-700', text: 'text-emerald-600', line: 'decoration-emerald-500', tint: 'bg-emerald-500/10' },
+  rejected: { label: '반려', cls: 'bg-red-100 text-red-700', text: 'text-red-700', line: 'decoration-red-500', tint: 'bg-red-500/10' },
+  published: { label: 'OPEN', cls: 'bg-emerald-100 text-emerald-700', text: 'text-gray-900', line: 'decoration-gray-400', tint: 'bg-gray-800/10' },
+  suspended: { label: '게시중단', cls: 'bg-orange-100 text-orange-700', text: 'text-orange-600', line: 'decoration-orange-500', tint: 'bg-orange-500/10' },
+  archived: { label: '보관됨', cls: 'bg-slate-200 text-slate-600', text: 'text-slate-600', line: 'decoration-slate-400', tint: 'bg-slate-500/10' },
 }
 
 /** 상태 코드 → 한글 라벨 (StatusBadge와 상태 필터 탭이 공유) */
@@ -23,12 +23,44 @@ export const STATUS_LABEL: Record<Status, string> = {
   archived: STATUS_STYLE.archived.label,
 }
 
-export function StatusBadge({ status }: { status: Status }) {
+/** 상태별 라인 아이콘 path(래퍼와 분리 — 크기를 사용처에서 지정) */
+const STATUS_ICON_PATHS: Record<Status, ReactNode> = {
+  draft: <path d="M16.5 4.5a1.9 1.9 0 0 1 2.7 2.7L8.7 17.7l-3.5 1 1-3.5L16.5 4.5z" />,
+  in_review: <><circle cx="12" cy="12" r="10" /><path d="M12 7v5l3.5 2" /></>,
+  approved: <><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></>,
+  rejected: <><circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" /></>,
+  published: <><circle cx="12" cy="12" r="10" /><line x1="2" y1="12" x2="22" y2="12" /><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" /></>,
+  suspended: <><circle cx="12" cy="12" r="10" /><line x1="10" y1="9" x2="10" y2="15" /><line x1="14" y1="9" x2="14" y2="15" /></>,
+  archived: <><polyline points="21 8 21 21 3 21 3 8" /><rect x="1" y="3" width="22" height="5" /><line x1="10" y1="12" x2="14" y2="12" /></>,
+}
+
+/** 상태 아이콘 SVG — currentColor 상속. size 클래스는 사용처에서 지정 */
+const StatusIc = ({ status, className }: { status: Status; className: string }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className={`${className} shrink-0`} aria-hidden="true">
+    {STATUS_ICON_PATHS[status]}
+  </svg>
+)
+
+export function StatusBadge({ status, iconOnly = false }: { status: Status; iconOnly?: boolean }) {
   const s = STATUS_STYLE[status]
+  // 아이콘 전용 — 텍스트 없이 아이콘 색 10% 배경의 라운드 정사각 칩(아이콘 크게)
+  if (iconOnly) {
+    return (
+      <span
+        title={s.label}
+        aria-label={s.label}
+        className={`grid h-8 w-8 place-items-center rounded-lg ${s.tint} ${s.text}`}
+      >
+        <StatusIc status={status} className="h-[1.15rem] w-[1.15rem]" />
+      </span>
+    )
+  }
+  // 아이콘 + 텍스트 — 텍스트(text-xs)와 정렬되도록 아이콘 h-4
   return (
     <span
-      className={`inline-block rounded-full bg-white/70 px-2.5 py-0.5 text-xs font-semibold ${s.text}`}
+      className={`inline-flex items-center gap-1 rounded-full bg-white/70 px-2.5 py-0.5 text-xs font-semibold leading-none ${s.text}`}
     >
+      <StatusIc status={status} className="h-4 w-4 translate-y-[0.5px]" />
       {s.label}
     </span>
   )

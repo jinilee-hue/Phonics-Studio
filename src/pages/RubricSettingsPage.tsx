@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { api } from '../api/client'
 import type { RubricConfig } from '../api/types'
+import { RadarChart } from '../components/RadarChart'
 
 /** 숫자 입력 — 네이티브 스피너를 숨기고 보라색 커스텀 증감 화살표(클릭 가능)를 붙인다. */
 function NumberField({
@@ -92,14 +93,31 @@ export function RubricSettingsPage() {
   return (
     <main className="mx-auto max-w-6xl space-y-6 px-4 py-8">
       <div>
-        <h2 className="text-[22px] font-bold text-brand-800">검수 규칙 편집</h2>
+        <h2 className="text-[22px] font-bold text-brand-800">검수 규칙</h2>
         <p className="text-sm text-gray-500">5차원 루브릭의 가중치·최소 가중합·하드게이트 임계를 조정합니다. (0~4 척도)</p>
       </div>
 
       <section className="rounded-2xl bg-white p-5 shadow-card">
-        <h3 className="mb-3 text-lg font-bold text-gray-700">차원별 가중치</h3>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+        <div className="grid gap-6 md:grid-cols-[1.2fr_1fr] md:items-stretch">
+          {/* 좌 — 가중치 분포 레이더 (검수 콘솔과 동일한 회색 라운드 박스, 표 높이에 맞춤) */}
+          <div className="order-2 flex flex-col justify-center rounded-lg bg-gray-50 p-3 md:order-1">
+            <RadarChart
+              data={Object.entries(data.dimensions).map(([code, label]) => ({ label, value: weights[code] ?? 0 }))}
+              max={Math.max(0.01, ...Object.values(weights))}
+              className="mx-auto block w-full max-w-[400px]"
+            />
+          </div>
+          {/* 우 — 헤더(표 시작점) + 가중치 표 */}
+          <div className="order-1 md:order-2">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <h3 className="text-lg font-bold text-gray-700">차원별 가중치</h3>
+              <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                최소 가중합(min total)
+                <NumberField value={minTotal} onChange={(v) => setMinTotal(v)} step={0.1} min={0} max={4} />
+              </label>
+            </div>
+            <div className="overflow-x-auto">
+            <table className="w-full text-sm">
             <thead>
               <tr className="text-xs">
                 <th className="px-4 py-3">차원</th>
@@ -140,18 +158,17 @@ export function RubricSettingsPage() {
                 <td className="px-4 py-3 text-center">{hardGateSum}</td>
               </tr>
             </tfoot>
-          </table>
+            </table>
+            </div>
+          </div>
         </div>
+
         {Math.abs(weightSum - 1) > 0.001 && (
           <p className="mt-2 text-xs text-amber-600">가중치 합계가 1.0이 아니어도 저장되지만, 1.0 권장합니다.</p>
         )}
-
-        {/* 최소 가중합 — 가중치 카드 하단에 통합(관련 임계 설정) */}
-        <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-brand-50 pt-4">
-          <span className="text-sm font-semibold text-gray-700">최소 가중합(min total)</span>
-          <NumberField value={minTotal} onChange={(v) => setMinTotal(v)} step={0.1} min={0} max={4} />
-          <span className="text-xs text-gray-400">가중합이 이 값 미만이면 하드게이트 실패(반려 권고).</span>
-        </div>
+        <p className="mt-3 border-t border-brand-50 pt-3 text-right text-xs text-gray-400">
+          ※ 최소 가중합: 가중합이 이 값 미만이면 하드게이트 실패(반려 권고).
+        </p>
       </section>
 
       <div className="flex flex-col items-center gap-3">

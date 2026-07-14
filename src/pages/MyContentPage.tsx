@@ -6,7 +6,7 @@ import { CharacterSprite } from '../components/CharacterSprite'
 import { api } from '../api/client'
 import { mockThumb } from '../api/mock'
 import { EDITABLE_STATUSES } from '../api/types'
-import type { AnalyzeResult, Content, ContentUpdate, Course, Kind, PlayContentUsage, PlayStats, SkillOption, SkillTag, Status } from '../api/types'
+import type { AnalyzeResult, Content, ContentReview, ContentUpdate, Course, Kind, PlayContentUsage, PlayStats, SkillOption, SkillTag, Status } from '../api/types'
 import { KindBadge, KindIcon, STATUS_LABEL, StatusBox } from '../components/badges'
 import { PreviewModal } from '../components/PreviewModal'
 import { SecurityScanPanel } from '../components/SecurityScanPanel'
@@ -122,8 +122,72 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
   )
 }
 
+/** 리뷰 반응 태그별 색상 */
+const TAG_STYLE: Record<string, string> = {
+  '재밌어요!': 'bg-emerald-100 text-emerald-700',
+  '또 하고 싶어요!': 'bg-brand-100 text-brand-700',
+  쉬워요: 'bg-blue-100 text-blue-700',
+  어려워요: 'bg-amber-100 text-amber-700',
+  없어요: 'bg-gray-100 text-gray-500',
+}
+
+/** 리뷰 모달 — 아이들이 남긴 별점 + 프리셋 반응 태그. 요약(평균·태그 분포) + 목록 */
+function ReviewsModal({ content, onClose }: { content: Content; onClose: () => void }) {
+  const { data: reviews = [], isLoading } = useQuery<ContentReview[]>({
+    queryKey: ['reviews', content.id],
+    queryFn: () => api.get(`/api/contents/${content.id}/reviews`),
+  })
+  const total = reviews.length
+  const avg = total ? reviews.reduce((a, r) => a + r.rating, 0) / total : 0
+
+  return (
+    <Modal title={`리뷰 — ${content.title}`} onClose={onClose}>
+      {isLoading ? (
+        <p className="py-8 text-center text-sm text-gray-400">불러오는 중…</p>
+      ) : total === 0 ? (
+        <p className="py-8 text-center text-sm text-gray-400">아직 리뷰가 없어요.</p>
+      ) : (
+        <>
+          {/* 요약 — 평균 별점 + 반응 태그 분포 */}
+          <div className="mb-4 flex items-center gap-5 rounded-xl bg-brand-50/60 p-4">
+            <span className="text-3xl font-extrabold leading-none text-brand-800">{avg.toFixed(1)}</span>
+            <div className="flex gap-2.5">
+              {[0, 1, 2, 3, 4].map((i) => (
+                <img key={i} src={starIcon} alt="" className={`h-6 w-6 ${i < Math.round(avg) ? '' : 'opacity-20 grayscale'}`} />
+              ))}
+            </div>
+            <span className="ml-auto text-sm text-gray-500">리뷰 {total}개</span>
+          </div>
+
+          {/* 리뷰 목록 — 닉네임 + 별점 + 반응 태그 */}
+          <ul className="modal-scroll max-h-[52vh] space-y-2 overflow-y-auto pr-1">
+            {reviews.map((r, i) => (
+              <li key={i} className="flex items-center gap-3 rounded-xl border border-brand-100 p-3">
+                {r.avatarUrl ? (
+                  <img src={r.avatarUrl} alt="" className="h-11 w-11 shrink-0 rounded-full object-cover" />
+                ) : (
+                  <div className="h-11 w-11 shrink-0 rounded-full bg-brand-100" />
+                )}
+                <span className="shrink-0 text-sm font-semibold text-brand-800">{r.nickname}</span>
+                <span className="inline-flex shrink-0 items-center gap-0.5 text-xs font-semibold text-amber-500">
+                  <img src={starIcon} alt="" className="h-3.5 w-3.5" />
+                  {r.rating.toFixed(1)}
+                </span>
+                {r.tag && (
+                  <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${TAG_STYLE[r.tag] ?? 'bg-gray-100 text-gray-600'}`}>{r.tag}</span>
+                )}
+                <span className="ml-auto shrink-0 text-xs text-gray-400">{fmtDate(r.createdAt)}</span>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </Modal>
+  )
+}
+
 /** 상태 필터 탭 순서(라이프사이클 순) */
-const STATUS_TABS: Status[] = ['in_review', 'approved', 'rejected', 'published', 'suspended']
+const STATUS_TABS: Status[] = ['published', 'in_review', 'approved', 'suspended', 'rejected']
 
 /** 내 콘텐츠 목록 — 본인 콘텐츠 + 승인 전(EDITABLE_STATUSES)만 인라인 수정(J MyContentPage).
  * 편집 폼은 코스→스킬 동적 피커(SkillCoursePicker)를 쓴다. */
@@ -153,6 +217,7 @@ export function MyContentPage() {
   })
   const [preview, setPreview] = useState<Content | null>(null)
   const [detailId, setDetailId] = useState<number | null>(null) // 상세(게임 정보·수정) 모달을 연 콘텐츠
+  const [reviewsFor, setReviewsFor] = useState<Content | null>(null) // 리뷰 목록 모달을 연 콘텐츠
   const [filter, setFilter] = useState<Status | 'all'>('all')
   const [kindFilter, setKindFilter] = useState<Kind | 'all'>('all')
   const [courseFilter, setCourseFilter] = useState<string>('all')
@@ -699,11 +764,16 @@ export function MyContentPage() {
                           <PlayIcon /> <span className="font-bold text-gray-900">{u.uses.toLocaleString()}</span>회 플레이
                         </span>
                         <span className="text-gray-300">·</span>
-                        <span className="inline-flex items-center gap-1 font-semibold text-amber-500">
+                        <button
+                          type="button"
+                          onClick={() => setReviewsFor(c)}
+                          className="group inline-flex items-center gap-1 font-semibold text-amber-500"
+                          title="리뷰 보기"
+                        >
                           <StarIcon />
                           {u.ratingAvg != null ? u.ratingAvg.toFixed(1) : '-'}
-                          <span className="font-normal text-gray-400">리뷰 {u.ratingCount}</span>
-                        </span>
+                          <span className="font-medium text-gray-600 group-hover:underline">리뷰 <b className="font-bold text-gray-900">{u.ratingCount}</b></span>
+                        </button>
                       </div>
                     )
                   if (c.status === 'rejected')
@@ -749,6 +819,7 @@ export function MyContentPage() {
       </div>
 
       {preview && <PreviewModal content={preview} onClose={() => setPreview(null)} />}
+      {reviewsFor && <ReviewsModal content={reviewsFor} onClose={() => setReviewsFor(null)} />}
 
       {detailContent && (
         <Modal

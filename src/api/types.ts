@@ -221,3 +221,12 @@ export interface PlayStats {
   summary: PlaySummary
   topContents: PlayContentUsage[]
 }
+
+/** 콘텐츠 사용자 리뷰 — 아이들이 별점 + 프리셋 태그(자유서술 없음)를 선택 */
+export interface ContentReview {
+  nickname: string
+  avatarUrl: string | null
+  rating: number
+  tag: string | null // 선택한 프리셋 반응(없으면 null)
+  createdAt: string
+}

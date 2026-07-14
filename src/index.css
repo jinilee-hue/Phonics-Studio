@@ -93,7 +93,8 @@ button:disabled {
 .app-topbar {
   position: sticky;
   top: 0;
-  z-index: 10;
+  /* 페이지 콘텐츠(배너 캐릭터 등 z-10)보다 항상 위에 오도록 높게 유지 */
+  z-index: 50;
   border-bottom: 1px solid rgb(255 255 255 / 0.72);
   background:
     linear-gradient(90deg, rgb(255 255 255 / 0.84), rgb(246 243 255 / 0.72)),
@@ -578,6 +579,35 @@ main:not(.auth-shell) .bg-brand-50\/40 {
   to {
     opacity: 1;
     transform: translate(-50%, 0);
+  }
+}
+
+/* 루브릭 레이더 — 중앙에서 뻗어나가는 등장 애니메이션(SVG 그룹 scale) */
+@keyframes radarGrow {
+  from {
+    transform: scale(0);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* 진행률/랭킹 막대 — 왼쪽에서 차오르는 등장 애니메이션 */
+@keyframes barGrow {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+/* 도넛 — 시계방향으로 채워지는 등장(마스크 아크 stroke-dashoffset을 0으로) */
+@keyframes donutReveal {
+  to {
+    stroke-dashoffset: 0;
   }
 }
 

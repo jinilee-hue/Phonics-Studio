@@ -6,6 +6,7 @@ import type {
   AnalyzeResult,
   AnalyzeSuggestion,
   Content,
+  ContentReview,
   Course,
   PipelineOverall,
   PipelineStage,
@@ -184,6 +185,14 @@ const RUBRIC: RubricConfig = {
   dimensions: DIMENSIONS,
 }
 
+// 최근 30일 등록 추이(목) — 오늘(2026-07-14) 기준 30일치, UTC 날짜 문자열로 생성
+const TREND_END_MS = Date.parse('2026-07-14T00:00:00Z')
+const TREND_COUNTS = [2, 3, 1, 4, 0, 5, 3, 2, 6, 1, 3, 4, 2, 0, 3, 5, 2, 4, 1, 3, 6, 2, 3, 1, 4, 2, 5, 3, 2, 4]
+const SUBMISSIONS_TREND = TREND_COUNTS.map((count, i) => ({
+  date: new Date(TREND_END_MS - (TREND_COUNTS.length - 1 - i) * 86_400_000).toISOString().slice(0, 10),
+  count,
+}))
+
 const STATS: Stats = {
   byStatus: { in_review: 7, approved: 5, rejected: 2, published: 8, suspended: 1, archived: 2 },
   totalContents: 25,
@@ -191,13 +200,7 @@ const STATS: Stats = {
   approvalRate: 0.72,
   decisionsApprove: 18,
   decisionsReject: 7,
-  submissionsTrend: [
-    { date: '2026-07-01', count: 3 },
-    { date: '2026-07-02', count: 5 },
-    { date: '2026-07-03', count: 2 },
-    { date: '2026-07-04', count: 6 },
-    { date: '2026-07-05', count: 4 },
-  ],
+  submissionsTrend: SUBMISSIONS_TREND,
   creatorRanking: [
     { userId: 1, name: '김창작', registrations: 12, approved: 9, published: 7 },
     { userId: 2, name: '이제작', registrations: 8, approved: 6, published: 4 },
@@ -282,6 +285,27 @@ export const MOCK_PIPELINE_OVERALL: PipelineOverall = {
  * 디자인 모드에서 api 클라이언트 대신 응답을 만들어 반환한다(네트워크 호출 없음).
  * 경로는 쿼리스트링을 떼고 pathname으로 매칭하며, `/:id` 경로 파라미터는 정규식으로 처리한다.
  */
+// 콘텐츠 사용자 리뷰(목) — review-faces 캐릭터를 리뷰어 아바타로. 스크롤 확인용으로 24개 생성
+const REVIEW_AVATARS = [
+  '/review-faces/character1.png',
+  '/review-faces/character2.png',
+  '/review-faces/character3.png',
+  '/review-faces/character5.png',
+  '/review-faces/character6.png',
+]
+const REVIEW_NICKS = ['민준', '서연', '도윤', '지우', '하은', '시우', '수아', '유준', '예린', '건우', '채원', '지호']
+// 아이들이 고르는 프리셋 반응(없어요 = null)
+const REVIEW_TAGS: (string | null)[] = ['재밌어요!', '또 하고 싶어요!', '쉬워요', '재밌어요!', '어려워요', '또 하고 싶어요!', '없어요', '쉬워요']
+const REVIEW_RATINGS = [5, 4, 5, 4, 5, 3, 5, 4, 4, 5]
+const REVIEW_END_MS = Date.parse('2026-07-14T00:00:00Z')
+const REVIEW_POOL: ContentReview[] = Array.from({ length: 24 }, (_, i) => ({
+  nickname: `${REVIEW_NICKS[i % REVIEW_NICKS.length]} 어린이`,
+  avatarUrl: REVIEW_AVATARS[i % REVIEW_AVATARS.length],
+  rating: REVIEW_RATINGS[i % REVIEW_RATINGS.length],
+  tag: REVIEW_TAGS[i % REVIEW_TAGS.length],
+  createdAt: new Date(REVIEW_END_MS - i * 86_400_000).toISOString(),
+}))
+
 export function mockRequest(method: string, rawPath: string): unknown {
   const path = rawPath.split('?')[0]
 
@@ -318,6 +342,7 @@ export function mockRequest(method: string, rawPath: string): unknown {
     const id = Number(contentMatch[1])
     const sub = contentMatch[2] ?? ''
     const found = CONTENTS.find((c) => c.id === id) ?? CONTENTS[0]
+    if (sub === '/reviews') return REVIEW_POOL
     if (sub === '/preview') return { url: 'about:blank', external: !!found.externalUrl } as Preview
     if (sub === '/scan') return SCAN_RESULT
     if (sub === '/analyze') return ANALYZE_RESULT

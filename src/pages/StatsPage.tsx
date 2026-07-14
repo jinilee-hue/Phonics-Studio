@@ -1,29 +1,85 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
+import type { ReactNode } from 'react'
 import { api } from '../api/client'
+import { mockThumb } from '../api/mock'
 import type { Content, PlayStats, Stats, Status, TrendPoint } from '../api/types'
-import { KindBadge, STATUS_LABEL, StatusBadge } from '../components/badges'
+import { STATUS_LABEL, StatusBadge } from '../components/badges'
+import starIcon from '../assets/ic_star.png'
+
+/** 통계 KPI용 라인 아이콘 래퍼 */
+const KpiIc = ({ children, className = 'text-brand-500' }: { children: ReactNode; className?: string }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className={`h-6 w-6 ${className}`} aria-hidden="true">
+    {children}
+  </svg>
+)
 
 /** 상태별 분포 목록 표시 순서 — 라이프사이클 순 */
 const STATUS_ORDER: Status[] = [
-  'draft',
+  'published',
   'in_review',
   'approved',
-  'rejected',
-  'published',
   'suspended',
+  'rejected',
   'archived',
+  'draft',
 ]
 
-/** 상태별 분포 막대·범례 색상 — 각 상태 뱃지 컬러에 맞춤(작성중=보라, 검수대기=파랑, 승인=초록, 반려=빨강, OPEN=검정, 게시중단=주황, 보관=회색) */
-const STATUS_BAR: Record<Status, string> = {
-  draft: 'bg-brand-500',
-  in_review: 'bg-blue-500',
-  approved: 'bg-emerald-500',
-  rejected: 'bg-red-500',
-  published: 'bg-gray-800',
-  suspended: 'bg-orange-500',
-  archived: 'bg-slate-400',
+/** 상태별 색(도넛·범례용 hex) */
+const STATUS_HEX: Record<Status, string> = {
+  draft: '#7c6bd0',
+  in_review: '#3b82f6',
+  approved: '#10b981',
+  rejected: '#ef4444',
+  published: '#1f2937',
+  suspended: '#f97316',
+  archived: '#94a3b8',
+}
+
+/** 상태 분포 도넛 차트 — 각 상태 비중을 링 세그먼트로. 가운데 전체 건수 표시 */
+function StatusDonut({ entries, total }: { entries: { s: Status; count: number }[]; total: number }) {
+  const R = 52
+  const C = 2 * Math.PI * R
+  let acc = 0
+  return (
+    <div className="relative mx-auto h-60 w-60 shrink-0">
+      <svg viewBox="0 0 140 140" className="h-60 w-60 -rotate-90">
+        <defs>
+          {/* 시계방향 리빌 마스크 — 흰 아크가 dashoffset C→0으로 자라며 세그먼트를 시계방향 노출 */}
+          <mask id="donutRevealMask">
+            <circle
+              cx="70"
+              cy="70"
+              r={R}
+              fill="none"
+              stroke="#fff"
+              strokeWidth={18}
+              strokeDasharray={C}
+              strokeDashoffset={C}
+              style={{ animation: 'donutReveal 0.9s ease-out forwards' }}
+            />
+          </mask>
+        </defs>
+        <circle cx="70" cy="70" r={R} fill="none" stroke="#f0edf9" strokeWidth={16} />
+        <g mask="url(#donutRevealMask)">
+          {entries.map(({ s, count }) => {
+            const seg = total > 0 ? (count / total) * C : 0
+            const el = (
+              <circle key={s} cx="70" cy="70" r={R} fill="none" stroke={STATUS_HEX[s]} strokeWidth={16} strokeDasharray={`${seg} ${C - seg}`} strokeDashoffset={-acc} />
+            )
+            acc += seg
+            return el
+          })}
+        </g>
+      </svg>
+      <div className="absolute inset-0 grid place-items-center">
+        <div className="text-center leading-tight">
+          <div className="text-4xl font-extrabold text-brand-800">{total}</div>
+          <div className="mt-0.5 text-sm text-gray-400">전체</div>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 const WEEKDAY = ['일', '월', '화', '수', '목', '금', '토']
@@ -44,11 +100,14 @@ function fullDay(s: string) {
   return `${m}월 ${d}일 (${WEEKDAY[dow]})`
 }
 
-function Kpi({ label, value }: { label: string; value: string }) {
+function Kpi({ label, value, icon }: { label: string; value: string; icon?: ReactNode }) {
   return (
-    <div className="rounded-2xl bg-white p-4 shadow-card">
-      <div className="truncate text-xs font-medium text-gray-400">{label}</div>
-      <div className="mt-1 text-2xl font-extrabold text-brand-700">{value}</div>
+    <div className="flex items-center justify-center gap-2.5 rounded-2xl bg-white p-4 shadow-card">
+      {icon && <span className="grid h-6 w-6 shrink-0 place-items-center">{icon}</span>}
+      <div className="flex min-w-0 flex-wrap items-center gap-x-2 [&>span]:whitespace-nowrap">
+        <span className="text-xs font-medium text-gray-400">{label}</span>
+        <span className="text-2xl font-extrabold text-brand-700">{value}</span>
+      </div>
     </div>
   )
 }
@@ -112,22 +171,22 @@ function TrendChart({ trend }: { trend: TrendPoint[] }) {
                   >
                     {/* 빈 날도 축이 이어져 보이도록 옅은 트랙 */}
                     <div className="absolute inset-0 rounded-md bg-brand-50/60 opacity-0 transition-opacity group-hover:opacity-100 group-focus:opacity-100" />
-                    {/* 값 막대 — 4px 라운드 데이터엔드, 바닥 기준 */}
+                    {/* 값 막대 — 4px 라운드 데이터엔드, 바닥 기준. 툴팁은 막대 상단 기준 10px 위 */}
                     <div
                       className={`relative rounded-t transition-all duration-150 ${
                         active ? 'bg-brand-600' : 'bg-gradient-to-t from-brand-300 to-brand-500'
                       }`}
                       style={{ height: t.count ? `max(${h}%, 4px)` : '0' }}
-                    />
-                    {/* 툴팁 — 값이 크게, 날짜는 보조(dataviz interaction) */}
-                    {active && (
-                      <div
-                        className={`pointer-events-none absolute bottom-full z-10 mb-2 whitespace-nowrap rounded-lg bg-brand-800 px-2.5 py-1.5 text-center shadow-lg ${alignCls(i)}`}
-                      >
-                        <div className="text-sm font-bold leading-none text-white">{t.count}건</div>
-                        <div className="mt-1 text-[10px] leading-none text-brand-200">{fullDay(t.date)}</div>
-                      </div>
-                    )}
+                    >
+                      {active && (
+                        <div
+                          className={`pointer-events-none absolute bottom-full z-10 mb-2.5 whitespace-nowrap rounded-lg bg-brand-800 px-2.5 py-1.5 text-center shadow-lg ${alignCls(i)}`}
+                        >
+                          <div className="text-sm font-bold leading-none text-white">{t.count}건</div>
+                          <div className="mt-1 text-[10px] leading-none text-brand-200">{fullDay(t.date)}</div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )
               })}
@@ -165,6 +224,9 @@ export function StatsPage() {
     return m
   }, [allContents])
   const shownStatuses = STATUS_ORDER.filter((s) => byStatusList[s]?.length)
+  // 도넛·범례용 분포(오른쪽 콘텐츠 리스트와 동일 데이터)
+  const dist = shownStatuses.map((s) => ({ s, count: byStatusList[s].length }))
+  const distTotal = allContents.length
 
   const play = useQuery<PlayStats>({
     queryKey: ['stats', 'play'],
@@ -193,55 +255,55 @@ export function StatsPage() {
       </div>
 
       <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Kpi label="총 콘텐츠" value={String(data.totalContents)} />
-        <Kpi label="창작자 수" value={String(data.totalCreators)} />
-        <Kpi label="승인율" value={`${Math.round(data.approvalRate * 100)}%`} />
-        <Kpi label="게시됨" value={String(data.byStatus.published ?? 0)} />
+        <Kpi
+          label="총 콘텐츠"
+          value={String(data.totalContents)}
+          icon={<KpiIc><polygon points="12 2 2 7 12 12 22 7 12 2" /><polyline points="2 17 12 22 22 17" /><polyline points="2 12 12 17 22 12" /></KpiIc>}
+        />
+        <Kpi
+          label="창작자 수"
+          value={String(data.totalCreators)}
+          icon={<KpiIc><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></KpiIc>}
+        />
+        <Kpi
+          label="승인율"
+          value={`${Math.round(data.approvalRate * 100)}%`}
+          icon={<KpiIc><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></KpiIc>}
+        />
+        <Kpi
+          label="게시됨"
+          value={String(data.byStatus.published ?? 0)}
+          icon={<KpiIc><circle cx="12" cy="12" r="10" /><line x1="2" y1="12" x2="22" y2="12" /><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" /></KpiIc>}
+        />
       </section>
 
       <section className="rounded-2xl bg-white p-5 shadow-card">
-        <div className="mb-3 flex items-end justify-between">
-          <h3 className="text-lg font-bold text-brand-800">상태별 분포</h3>
-          <span className="text-xs text-gray-400">
-            승인 {data.decisionsApprove} · 반려 {data.decisionsReject}
-          </span>
-        </div>
+        <h3 className="mb-4 text-lg font-bold text-brand-800">상태별 분포</h3>
 
-        {/* 부분-전체 비율 막대 — 상태별 비중을 한눈에 */}
-        {shownStatuses.length > 0 && (
-          <div className="mb-3 flex h-2.5 gap-0.5 overflow-hidden rounded-full">
-            {shownStatuses.map((s) => (
-              <div
-                key={s}
-                className={STATUS_BAR[s]}
-                style={{ flexGrow: byStatusList[s].length, flexBasis: 0 }}
-                title={`${STATUS_LABEL[s]} ${byStatusList[s].length}건`}
-              />
-            ))}
+        <div className="grid gap-6 md:grid-cols-2 md:items-stretch">
+          {/* 좌 — 상태 분포 도넛(상단 센터) + 범례(하단 2열) */}
+          <div className="flex flex-col items-center justify-center gap-5 rounded-lg bg-gray-50 p-4">
+            <StatusDonut entries={dist} total={distTotal} />
+            <ul className="grid w-full grid-cols-2 gap-x-12 gap-y-1.5 px-6">
+              {dist.map(({ s, count }) => (
+                <li key={s} className="flex items-center gap-1.5 text-xs">
+                  <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: STATUS_HEX[s] }} />
+                  <span className="text-gray-600">{STATUS_LABEL[s]}</span>
+                  <span className="ml-auto tabular-nums text-gray-400">
+                    <b className="text-gray-800">{count}</b> ({distTotal ? Math.round((count / distTotal) * 100) : 0}%)
+                  </span>
+                </li>
+              ))}
+            </ul>
           </div>
-        )}
 
-        {/* 범례 겸 카운트 칩 */}
-        <div className="flex flex-wrap gap-2">
-          {Object.entries(data.byStatus).map(([status, count]) => (
-            <span
-              key={status}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-brand-50 px-2.5 py-1 text-xs font-semibold text-brand-700"
-            >
-              <span className={`h-2 w-2 rounded-full ${STATUS_BAR[status as Status] ?? 'bg-brand-400'}`} />
-              {STATUS_LABEL[status as Status] ?? status} <b className="tabular-nums">{count}</b>
-            </span>
-          ))}
-        </div>
-
-        {/* 상태별 실제 콘텐츠 목록 — 어떤 게 게시됨/검수대기인지 확인 (라이프사이클 순) */}
-        <div className="modal-scroll mt-5 max-h-96 overflow-auto px-3">
+          {/* 우 — 상태별 콘텐츠 리스트 (라이프사이클 순) */}
+          <div className="modal-scroll max-h-96 overflow-auto px-1">
           <table className="w-full text-sm">
             <thead>
               <tr className="text-xs">
                 <th className="w-40 px-4 py-3">상태</th>
-                <th className="px-4 py-3">제목</th>
-                <th className="px-4 py-3">형식</th>
+                <th className="px-4 py-3">콘텐츠명</th>
               </tr>
             </thead>
             <tbody>
@@ -259,13 +321,13 @@ export function StatsPage() {
                       </td>
                     )}
                     <td className="px-4 py-3 font-medium text-gray-700">{c.title}</td>
-                    <td className="px-4 py-3 text-center"><KindBadge kind={c.kind} /></td>
                   </tr>
                 ))
               })}
             </tbody>
           </table>
-          {allContents.length === 0 && <p className="py-4 text-center text-xs text-gray-400">등록된 콘텐츠가 없습니다.</p>}
+            {allContents.length === 0 && <p className="py-4 text-center text-xs text-gray-400">등록된 콘텐츠가 없습니다.</p>}
+          </div>
         </div>
       </section>
 
@@ -313,7 +375,7 @@ export function StatsPage() {
                       <div className="flex items-center justify-center gap-2">
                         <div className="h-2 w-24 overflow-hidden rounded-full bg-brand-50">
                           <div
-                            className="h-full rounded-full bg-gradient-to-r from-brand-400 to-brand-500"
+                            className="h-full origin-left rounded-full bg-gradient-to-r from-brand-400 to-brand-500 animate-[barGrow_0.7s_ease-out_both]"
                             style={{ width: `${(c.registrations / maxReg) * 100}%` }}
                           />
                         </div>
@@ -330,22 +392,24 @@ export function StatsPage() {
         )}
       </section>
 
-      <section className="space-y-3">
+      <section className="space-y-5">
         <div className="flex flex-wrap items-center gap-3">
           <h3 className="text-lg font-bold text-brand-800">플레이 지표 (Play 서비스 연동)</h3>
           {play.data && (
             <button
               onClick={() => syncRewards.mutate()}
               disabled={syncRewards.isPending}
-              className="rounded-lg border border-brand-200 px-3 py-1.5 text-xs font-semibold text-brand-600 hover:bg-brand-50 disabled:opacity-50"
+              className="group relative ml-auto inline-flex items-center gap-1.5 rounded-lg border border-brand-200 px-3 py-1.5 text-xs font-semibold text-brand-600 hover:bg-brand-50 disabled:opacity-50"
             >
               {syncRewards.isPending ? '정산 중…' : '사용도 보상 정산'}
+              {/* 버튼 안 i — hover 시 안내(또는 정산 결과) 툴팁 */}
+              <span aria-hidden="true" className="grid h-4 w-4 shrink-0 place-items-center rounded-full bg-brand-400 text-[10px] font-bold text-white">i</span>
+              <span className="pointer-events-none absolute left-1/2 top-full z-20 mt-1.5 hidden w-max max-w-xs -translate-x-1/2 rounded-lg bg-brand-800/90 px-3 py-2 text-xs font-normal leading-relaxed text-white shadow-lg group-hover:block">
+                {syncRewards.data
+                  ? `+${syncRewards.data.newlyAwarded}P 적립 (신규 정산 ${syncRewards.data.settledContents}개 / 검토 ${syncRewards.data.syncedContents}개)`
+                  : '게시 콘텐츠의 플레이(사용)량을 집계해 창작자에게 사용도 보상 포인트를 정산합니다.'}
+              </span>
             </button>
-          )}
-          {syncRewards.data && (
-            <span className="text-xs text-brand-600">
-              +{syncRewards.data.newlyAwarded}P 적립 (신규 정산 {syncRewards.data.settledContents}개 / 검토 {syncRewards.data.syncedContents}개)
-            </span>
           )}
         </div>
 
@@ -358,18 +422,30 @@ export function StatsPage() {
         ) : (
           <>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <Kpi label="총 플레이" value={play.data.summary.totalPlays.toLocaleString()} />
-              <Kpi label="학습자 수" value={String(play.data.summary.distinctLearners)} />
-              <Kpi label="완료율" value={`${Math.round(play.data.summary.completionRate * 100)}%`} />
               <Kpi
-               
+                label="총 플레이"
+                value={play.data.summary.totalPlays.toLocaleString()}
+                icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6 text-brand-500" aria-hidden="true"><path d="M8.2 5.68 L17.8 10.82 Q20 12 17.8 13.18 L8.2 18.32 Q6 19.5 6 17 L6 7 Q6 4.5 8.2 5.68 Z" /></svg>}
+              />
+              <Kpi
+                label="학습자 수"
+                value={String(play.data.summary.distinctLearners)}
+                icon={<KpiIc><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></KpiIc>}
+              />
+              <Kpi
+                label="완료율"
+                value={`${Math.round(play.data.summary.completionRate * 100)}%`}
+                icon={<KpiIc><path d="M21.21 15.89A10 10 0 1 1 8 2.83" /><path d="M22 12A10 10 0 0 0 12 2v10z" /></KpiIc>}
+              />
+              <Kpi
                 label="평균 별점"
                 value={play.data.summary.avgRating != null ? play.data.summary.avgRating.toFixed(1) : '-'}
+                icon={<KpiIc><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26" /></KpiIc>}
               />
             </div>
 
             {play.data.topContents.length > 0 && (
-              <div className="overflow-x-auto">
+              <div className="mt-8 overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-brand-100 text-left text-xs text-gray-400">
@@ -380,16 +456,31 @@ export function StatsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {play.data.topContents.map((c) => (
+                    {play.data.topContents.map((c) => {
+                      const thumb = mockThumb(c.contentId) ?? `/api/contents/${c.contentId}/thumb`
+                      return (
                       <tr key={c.contentId} className="border-b border-brand-50 transition-colors last:border-0 hover:bg-brand-50/50">
-                        <td className="px-4 py-3 font-medium">{c.title}</td>
+                        <td className="px-4 py-3 font-medium">
+                          <div className="flex items-center gap-2.5">
+                            <img src={thumb} alt="" className="h-12 w-12 shrink-0 rounded-lg object-cover" />
+                            <span className="min-w-0 truncate">{c.title}</span>
+                          </div>
+                        </td>
                         <td className="px-4 py-3 text-center tabular-nums text-gray-600">{c.uses}</td>
                         <td className="px-4 py-3 text-center tabular-nums text-gray-500">{c.completions}</td>
                         <td className="px-4 py-3 text-center tabular-nums text-gray-500">
-                          {c.ratingAvg != null ? `${c.ratingAvg} (${c.ratingCount})` : '-'}
+                          {c.ratingAvg != null ? (
+                            <span className="inline-flex items-center justify-center gap-1">
+                              <img src={starIcon} alt="" className="h-4 w-4" />
+                              {c.ratingAvg} ({c.ratingCount})
+                            </span>
+                          ) : (
+                            '-'
+                          )}
                         </td>
                       </tr>
-                    ))}
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>
