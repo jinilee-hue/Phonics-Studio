@@ -15,14 +15,14 @@ const STATUS_ORDER: Status[] = [
   'archived',
 ]
 
-/** 상태별 분포 막대 색상 — badges STATUS_STYLE와 같은 색 계열의 solid 톤 */
+/** 상태별 분포 막대·범례 색상 — 각 상태 뱃지 컬러에 맞춤(작성중=보라, 검수대기=파랑, 승인=초록, 반려=빨강, OPEN=검정, 게시중단=주황, 보관=회색) */
 const STATUS_BAR: Record<Status, string> = {
-  draft: 'bg-gray-300',
-  in_review: 'bg-amber-400',
-  approved: 'bg-sky-400',
-  rejected: 'bg-red-400',
-  published: 'bg-emerald-400',
-  suspended: 'bg-orange-400',
+  draft: 'bg-brand-500',
+  in_review: 'bg-blue-500',
+  approved: 'bg-emerald-500',
+  rejected: 'bg-red-500',
+  published: 'bg-gray-800',
+  suspended: 'bg-orange-500',
   archived: 'bg-slate-400',
 }
 
@@ -44,10 +44,9 @@ function fullDay(s: string) {
   return `${m}월 ${d}일 (${WEEKDAY[dow]})`
 }
 
-function Kpi({ label, value, accent }: { label: string; value: string; accent: string }) {
+function Kpi({ label, value }: { label: string; value: string }) {
   return (
-    <div className="relative overflow-hidden rounded-2xl bg-white p-4 shadow-card">
-      <div className={`absolute inset-x-0 top-0 h-1 ${accent}`} />
+    <div className="rounded-2xl bg-white p-4 shadow-card">
       <div className="truncate text-xs font-medium text-gray-400">{label}</div>
       <div className="mt-1 text-2xl font-extrabold text-brand-700">{value}</div>
     </div>
@@ -76,7 +75,7 @@ function TrendChart({ trend }: { trend: TrendPoint[] }) {
     <section className="rounded-2xl bg-white p-5 shadow-card">
       <div className="mb-4 flex items-end justify-between">
         <div>
-          <h3 className="text-sm font-bold text-brand-800">최근 30일 등록 추이</h3>
+          <h3 className="text-lg font-bold text-brand-800">최근 30일 등록 추이</h3>
           <p className="mt-0.5 text-xs text-gray-400">
             총 {total}건 · 최대 {max}건/일
           </p>
@@ -187,22 +186,22 @@ export function StatsPage() {
   return (
     <main className="mx-auto max-w-6xl space-y-8 px-4 py-8">
       <div>
-        <h2 className="text-lg font-bold text-brand-800">운영 통계</h2>
+        <h2 className="text-[22px] font-bold text-brand-800">운영 통계</h2>
         <p className="text-sm text-gray-500">
           콘텐츠 등록·검수·게시 파이프라인 지표입니다. 학생 플레이 지표는 Play 서비스에서 확인하세요.
         </p>
       </div>
 
       <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Kpi accent="bg-brand-400" label="총 콘텐츠" value={String(data.totalContents)} />
-        <Kpi accent="bg-sky-400" label="창작자 수" value={String(data.totalCreators)} />
-        <Kpi accent="bg-emerald-400" label="승인율" value={`${Math.round(data.approvalRate * 100)}%`} />
-        <Kpi accent="bg-amber-400" label="게시됨" value={String(data.byStatus.published ?? 0)} />
+        <Kpi label="총 콘텐츠" value={String(data.totalContents)} />
+        <Kpi label="창작자 수" value={String(data.totalCreators)} />
+        <Kpi label="승인율" value={`${Math.round(data.approvalRate * 100)}%`} />
+        <Kpi label="게시됨" value={String(data.byStatus.published ?? 0)} />
       </section>
 
       <section className="rounded-2xl bg-white p-5 shadow-card">
         <div className="mb-3 flex items-end justify-between">
-          <h3 className="text-sm font-bold text-brand-800">상태별 분포</h3>
+          <h3 className="text-lg font-bold text-brand-800">상태별 분포</h3>
           <span className="text-xs text-gray-400">
             승인 {data.decisionsApprove} · 반려 {data.decisionsReject}
           </span>
@@ -235,42 +234,51 @@ export function StatsPage() {
           ))}
         </div>
 
-        {/* 상태별 실제 콘텐츠 목록 — 어떤 게 게시됨/검수대기인지 확인 */}
-        <div className="mt-5 max-h-96 space-y-4 overflow-y-auto pr-1">
-          {shownStatuses.map((s) => (
-            <div key={s}>
-              <div className="mb-1.5 flex items-center gap-2">
-                <StatusBadge status={s} />
-                <span className="text-xs text-gray-400">{byStatusList[s].length}건</span>
-              </div>
-              <ul className="space-y-0.5">
-                {byStatusList[s].map((c) => (
-                  <li
+        {/* 상태별 실제 콘텐츠 목록 — 어떤 게 게시됨/검수대기인지 확인 (라이프사이클 순) */}
+        <div className="modal-scroll mt-5 max-h-96 overflow-auto px-3">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-xs">
+                <th className="w-40 px-4 py-3">상태</th>
+                <th className="px-4 py-3">제목</th>
+                <th className="px-4 py-3">형식</th>
+              </tr>
+            </thead>
+            <tbody>
+              {shownStatuses.flatMap((s) => {
+                const items = byStatusList[s]
+                return items.map((c, idx) => (
+                  <tr
                     key={c.id}
-                    className="flex items-center gap-2 rounded-lg px-2 py-1 text-sm text-gray-700 transition-colors hover:bg-brand-50/70"
+                    className={`border-b border-brand-50 last:border-b-2 last:border-b-brand-100 ${idx === 0 ? 'border-t-2 border-t-brand-100' : ''}`}
                   >
-                    <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${STATUS_BAR[s] ?? 'bg-brand-400'}`} />
-                    <span className="min-w-0 truncate">{c.title}</span>
-                    <KindBadge kind={c.kind} />
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-          {allContents.length === 0 && <p className="text-xs text-gray-400">등록된 콘텐츠가 없습니다.</p>}
+                    {idx === 0 && (
+                      <td rowSpan={items.length} className="border-r border-brand-100 px-4 py-3 text-center align-middle">
+                        <StatusBadge status={s} />
+                        <div className="mt-1 text-xs text-gray-400">{items.length}건</div>
+                      </td>
+                    )}
+                    <td className="px-4 py-3 font-medium text-gray-700">{c.title}</td>
+                    <td className="px-4 py-3 text-center"><KindBadge kind={c.kind} /></td>
+                  </tr>
+                ))
+              })}
+            </tbody>
+          </table>
+          {allContents.length === 0 && <p className="py-4 text-center text-xs text-gray-400">등록된 콘텐츠가 없습니다.</p>}
         </div>
       </section>
 
       <TrendChart trend={data.submissionsTrend} />
 
       <section>
-        <h3 className="mb-3 text-sm font-bold text-brand-800">창작자 랭킹 (등록순)</h3>
+        <h3 className="mb-3 text-lg font-bold text-brand-800">창작자 랭킹 (등록순)</h3>
         {data.creatorRanking.length === 0 ? (
           <p className="rounded-2xl bg-white p-8 text-center text-sm text-gray-400 shadow-card">
             데이터가 없습니다.
           </p>
         ) : (
-          <div className="overflow-hidden rounded-2xl bg-white shadow-card">
+          <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-brand-100 text-left text-xs text-gray-400">
@@ -288,11 +296,11 @@ export function StatsPage() {
                         <span
                           className={`grid h-6 w-6 shrink-0 place-items-center rounded-full text-xs font-bold ${
                             i === 0
-                              ? 'bg-amber-100 text-amber-700'
+                              ? 'bg-brand-600 text-white'
                               : i === 1
-                                ? 'bg-slate-200 text-slate-600'
+                                ? 'bg-brand-200 text-brand-700'
                                 : i === 2
-                                  ? 'bg-orange-100 text-orange-700'
+                                  ? 'bg-brand-100 text-brand-600'
                                   : 'bg-brand-50 text-brand-400'
                           }`}
                         >
@@ -302,7 +310,7 @@ export function StatsPage() {
                       </div>
                     </td>
                     <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center justify-center gap-2">
                         <div className="h-2 w-24 overflow-hidden rounded-full bg-brand-50">
                           <div
                             className="h-full rounded-full bg-gradient-to-r from-brand-400 to-brand-500"
@@ -312,8 +320,8 @@ export function StatsPage() {
                         <span className="tabular-nums text-gray-600">{c.registrations}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-3 tabular-nums text-gray-500">{c.approved}</td>
-                    <td className="px-4 py-3 tabular-nums text-gray-500">{c.published}</td>
+                    <td className="px-4 py-3 text-center tabular-nums text-gray-500">{c.approved}</td>
+                    <td className="px-4 py-3 text-center tabular-nums text-gray-500">{c.published}</td>
                   </tr>
                 ))}
               </tbody>
@@ -324,7 +332,7 @@ export function StatsPage() {
 
       <section className="space-y-3">
         <div className="flex flex-wrap items-center gap-3">
-          <h3 className="text-sm font-bold text-brand-800">플레이 지표 (Play 서비스 연동)</h3>
+          <h3 className="text-lg font-bold text-brand-800">플레이 지표 (Play 서비스 연동)</h3>
           {play.data && (
             <button
               onClick={() => syncRewards.mutate()}
@@ -335,7 +343,7 @@ export function StatsPage() {
             </button>
           )}
           {syncRewards.data && (
-            <span className="text-xs text-emerald-600">
+            <span className="text-xs text-brand-600">
               +{syncRewards.data.newlyAwarded}P 적립 (신규 정산 {syncRewards.data.settledContents}개 / 검토 {syncRewards.data.syncedContents}개)
             </span>
           )}
@@ -350,18 +358,18 @@ export function StatsPage() {
         ) : (
           <>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <Kpi accent="bg-brand-400" label="총 플레이" value={play.data.summary.totalPlays.toLocaleString()} />
-              <Kpi accent="bg-sky-400" label="학습자 수" value={String(play.data.summary.distinctLearners)} />
-              <Kpi accent="bg-emerald-400" label="완료율" value={`${Math.round(play.data.summary.completionRate * 100)}%`} />
+              <Kpi label="총 플레이" value={play.data.summary.totalPlays.toLocaleString()} />
+              <Kpi label="학습자 수" value={String(play.data.summary.distinctLearners)} />
+              <Kpi label="완료율" value={`${Math.round(play.data.summary.completionRate * 100)}%`} />
               <Kpi
-                accent="bg-amber-400"
+               
                 label="평균 별점"
                 value={play.data.summary.avgRating != null ? play.data.summary.avgRating.toFixed(1) : '-'}
               />
             </div>
 
             {play.data.topContents.length > 0 && (
-              <div className="overflow-hidden rounded-2xl bg-white shadow-card">
+              <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-brand-100 text-left text-xs text-gray-400">
@@ -375,9 +383,9 @@ export function StatsPage() {
                     {play.data.topContents.map((c) => (
                       <tr key={c.contentId} className="border-b border-brand-50 transition-colors last:border-0 hover:bg-brand-50/50">
                         <td className="px-4 py-3 font-medium">{c.title}</td>
-                        <td className="px-4 py-3 tabular-nums text-gray-600">{c.uses}</td>
-                        <td className="px-4 py-3 tabular-nums text-gray-500">{c.completions}</td>
-                        <td className="px-4 py-3 tabular-nums text-gray-500">
+                        <td className="px-4 py-3 text-center tabular-nums text-gray-600">{c.uses}</td>
+                        <td className="px-4 py-3 text-center tabular-nums text-gray-500">{c.completions}</td>
+                        <td className="px-4 py-3 text-center tabular-nums text-gray-500">
                           {c.ratingAvg != null ? `${c.ratingAvg} (${c.ratingCount})` : '-'}
                         </td>
                       </tr>

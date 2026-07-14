@@ -96,7 +96,7 @@ export function ReviewPage() {
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-8">
-      <h2 className="mb-1 text-lg font-bold text-brand-800">검수 대기열 ({queue.length})</h2>
+      <h2 className="mb-1 text-[22px] font-bold text-brand-800">검수 대기열 ({queue.length})</h2>
       <p className="mb-5 text-sm text-gray-500">
         격리 미리보기로 실행해보고, 자동검수 파이프라인의 근거를 참고해 승인/반려하세요. 판정은 사람이 합니다.
       </p>
@@ -161,20 +161,29 @@ export function ReviewPage() {
               <span className="ml-auto flex flex-wrap gap-2 [&>button]:shrink-0 [&>button]:whitespace-nowrap">
                 <button
                   onClick={() => togglePipeline(c.id)}
-                  className="rounded-lg border border-brand-200 px-3 py-1.5 text-xs font-semibold text-brand-700 hover:bg-brand-50"
+                  className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-brand-200 px-5 py-2.5 text-sm font-semibold text-brand-600 hover:bg-brand-50"
                 >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true">
+                    <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" />
+                    <rect x="9" y="3" width="6" height="4" rx="1" />
+                    <path d="m9 14 2 2 4-4" />
+                  </svg>
                   심사 콘솔
                 </button>
                 <button
                   onClick={() => setPreview(c)}
-                  className="rounded-lg border border-brand-200 px-3 py-1.5 text-xs font-semibold text-brand-600 hover:bg-brand-50"
+                  className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-brand-200 px-5 py-2.5 text-sm font-semibold text-brand-600 hover:bg-brand-50"
                 >
-                  ▶ 테스트 플레이
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true">
+                    <polygon points="7 5 19 12 7 19" />
+                  </svg>
+                  테스트 플레이
                 </button>
                 <button
                   onClick={() => approve.mutate(c.id)}
                   disabled={approve.isPending}
-                  className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50"
+                  style={{ backgroundColor: '#6f5bc8', borderRadius: '0.5rem' }}
+                  className="px-5 py-2.5 text-sm font-bold text-white transition hover:brightness-110 disabled:opacity-50"
                 >
                   승인
                 </button>
@@ -183,7 +192,7 @@ export function ReviewPage() {
                     setRejecting(c)
                     setReason('')
                   }}
-                  className="rounded-lg bg-red-500 px-3 py-1.5 text-xs font-bold text-white hover:bg-red-600"
+                  className="rounded-lg bg-red-500 px-5 py-2.5 text-sm font-bold text-white hover:bg-red-600"
                 >
                   반려
                 </button>

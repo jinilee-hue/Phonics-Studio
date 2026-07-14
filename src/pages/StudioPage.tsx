@@ -226,30 +226,65 @@ function ThumbBox({
   )
 }
 
-/** 등록 폼의 단계 구분 카드 — 번호 배지 + 제목 + 부제로 섹션을 시각적으로 그룹핑 */
+/** 등록 폼의 단계 카드 — 번호 배지 + 제목 + 부제. open/onToggle을 주면 아코디언(접기·펼치기)으로 동작. */
 function SectionCard({
   step,
   title,
   desc,
+  open = true,
+  onToggle,
   children,
 }: {
   step: number
   title: string
   desc?: string
+  open?: boolean
+  onToggle?: () => void
   children: ReactNode
 }) {
+  const header = (
+    <>
+      <span
+        className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
+          open ? 'bg-brand-600 text-white' : 'bg-brand-100 text-brand-700'
+        }`}
+      >
+        {step}
+      </span>
+      <span className="min-w-0 flex-1 text-left">
+        <span className="block text-base font-bold text-brand-800">{title}</span>
+        {desc && <span className="mt-0.5 block text-xs text-gray-400">{desc}</span>}
+      </span>
+      {onToggle && (
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={2}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className={`h-5 w-5 shrink-0 text-gray-400 transition ${open ? 'rotate-180' : ''}`}
+          aria-hidden="true"
+        >
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      )}
+    </>
+  )
   return (
     <section className="rounded-2xl bg-white p-6 shadow-card">
-      <div className="mb-5 flex items-center gap-2.5">
-        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-100 text-xs font-bold text-brand-700">
-          {step}
-        </span>
-        <div>
-          <h3 className="text-base font-bold text-brand-800">{title}</h3>
-          {desc && <p className="mt-0.5 text-xs text-gray-400">{desc}</p>}
-        </div>
-      </div>
-      {children}
+      {onToggle ? (
+        <button
+          type="button"
+          onClick={onToggle}
+          className={`flex w-full items-center gap-2.5 ${open ? 'mb-5' : ''}`}
+        >
+          {header}
+        </button>
+      ) : (
+        <div className="mb-5 flex items-center gap-2.5">{header}</div>
+      )}
+      {open && children}
     </section>
   )
 }
@@ -346,6 +381,7 @@ export function StudioPage() {
     if (f.has('skills')) setRegSkills([])
     f.clear()
   }
+
 
   // 분석 제안을 빈 필드에만 채우고(입력 보호), 채운 필드를 기록한다. 파일·URL 분석 공용.
   const applySuggestion = (s: AnalyzeSuggestion) => {
@@ -586,7 +622,7 @@ export function StudioPage() {
 
   return (
     <main className="mx-auto max-w-6xl space-y-6 px-4 py-8">
-      <h2 className="text-xl font-bold text-brand-800">콘텐츠 등록</h2>
+      <h2 className="text-[22px] font-bold text-brand-800">콘텐츠 등록</h2>
 
       <form
         onSubmit={(e) => {
@@ -595,7 +631,7 @@ export function StudioPage() {
         }}
         className="space-y-6"
       >
-        {/* STEP 1 — 기본 정보 (F-02) */}
+        {/* 기본 정보 (F-02) */}
         <SectionCard
           step={1}
           title="기본 정보"
@@ -673,7 +709,8 @@ export function StudioPage() {
                     onChange={(e) => { setTitle(e.target.value); aiFilledRef.current.delete('title') }}
                     placeholder="콘텐츠 제목"
                     required
-                    className="rounded-xl border border-brand-200 px-3.5 py-2.5 text-sm outline-none focus:border-brand-500"
+                    style={{ borderRadius: '0.5rem' }}
+                    className="rounded-lg border border-brand-200 px-3.5 py-2.5 text-sm outline-none focus:border-brand-500"
                   />
                 </label>
                 <label className="flex flex-col gap-1.5">
@@ -685,7 +722,8 @@ export function StudioPage() {
                     onChange={(e) => { setDescription(e.target.value); aiFilledRef.current.delete('description') }}
                     placeholder="간단한 설명"
                     rows={2}
-                    className="resize-none rounded-xl border border-brand-200 px-3.5 py-2.5 text-sm outline-none focus:border-brand-500"
+                    style={{ borderRadius: '0.5rem' }}
+                    className="resize-none rounded-lg border border-brand-200 px-3.5 py-2.5 text-sm outline-none focus:border-brand-500"
                   />
                 </label>
               </div>
@@ -736,7 +774,7 @@ export function StudioPage() {
           </div>
         </SectionCard>
 
-        {/* STEP 2 — 콘텐츠 소스 (F-01) */}
+        {/* 콘텐츠 소스 (F-01) */}
         <SectionCard
           step={2}
           title="콘텐츠 소스"
@@ -838,7 +876,8 @@ export function StudioPage() {
                 onBlur={triggerUrlAnalyze}
                 placeholder="https:// 로 시작하는 콘텐츠 주소 (입력 후 자동 분석)"
                 required
-                className="w-full rounded-xl border border-brand-200 px-3.5 py-2.5 text-sm outline-none focus:border-brand-500"
+                style={{ borderRadius: '0.5rem' }}
+                className="w-full rounded-lg border border-brand-200 px-3.5 py-2.5 text-sm outline-none focus:border-brand-500"
               />
             )}
 
@@ -859,7 +898,7 @@ export function StudioPage() {
                 )}
                 {scanFile.data && (
                   <div className="rounded-xl border border-brand-100 bg-white p-4">
-                    <h3 className="mb-2 text-sm font-bold text-brand-800">🔒 보안 검사</h3>
+                    <h3 className="mb-2 text-lg font-bold text-brand-800">🔒 보안 검사</h3>
                     <ScanResultView data={scanFile.data} />
                     {scanFile.data.hasBlocking && (
                       <p className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-xs font-semibold text-red-600">
@@ -899,8 +938,12 @@ export function StudioPage() {
           </div>
         </SectionCard>
 
-        {/* STEP 3 — 분류 (F-03) */}
-        <SectionCard step={3} title="분류" desc="레벨과 스킬을 지정하세요. 주 스킬 1개는 필수예요.">
+        {/* 분류 (F-03) */}
+        <SectionCard
+          step={3}
+          title="분류"
+          desc="레벨과 스킬을 지정하세요. 주 스킬 1개는 필수예요."
+        >
           <SkillCoursePicker
             skills={regSkills}
             onSkillsChange={(s) => { setRegSkills(s); aiFilledRef.current.delete('skills') }}
@@ -909,63 +952,64 @@ export function StudioPage() {
           />
         </SectionCard>
 
-        {/* 제출 준비 — AI 제작 선언 + 상태 안내 (흰 박스) */}
+        {/* 제출 준비 — AI 제작 선언 + 상태 안내 */}
         <div className="space-y-3 rounded-2xl bg-white p-5 shadow-card">
-          <label className="flex cursor-pointer items-center gap-2.5 text-sm text-gray-600">
-            <span className="relative inline-flex h-5 w-5 shrink-0 items-center justify-center">
-              <input
-                type="checkbox"
-                checked={usesAi}
-                onChange={(e) => setUsesAi(e.target.checked)}
-                className="peer absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
-              />
-              <span className="pointer-events-none absolute inset-0 rounded-[4px] border-2 border-brand-300 bg-white transition-colors peer-checked:border-brand-600 peer-checked:bg-brand-600" />
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={3.5}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="pointer-events-none relative h-3 w-3 text-white opacity-0 transition-opacity peer-checked:opacity-100"
-                aria-hidden="true"
-              >
-                <polyline points="20 6 9 17 4 12" />
-              </svg>
-            </span>
-            이 콘텐츠는 AI를 사용해 제작되었습니다
-          </label>
-          {register.isError && (
-            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
-              등록 실패: {register.error instanceof Error ? register.error.message : '알 수 없는 오류'}
-            </p>
-          )}
-          {register.isSuccess && (
-            <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-              등록되어 <b>검수 대기열</b>로 바로 제출되었습니다. <b>내 콘텐츠</b> 메뉴에서 진행 상태를 확인할 수 있어요.
-            </p>
-          )}
-          {hasPrimarySkill && scanFile.isPending && (
-            <p className="text-xs text-gray-400">보안검사 통과 후 등록할 수 있어요.</p>
-          )}
-          {hasPrimarySkill && scanFile.data?.hasBlocking && (
-            <p className="text-xs text-red-500">보안검사 차단 항목을 수정해야 등록할 수 있어요.</p>
-          )}
-        </div>
+            <label className="flex cursor-pointer items-center gap-2.5 text-sm text-gray-600">
+              <span className="relative inline-flex h-5 w-5 shrink-0 items-center justify-center">
+                <input
+                  type="checkbox"
+                  checked={usesAi}
+                  onChange={(e) => setUsesAi(e.target.checked)}
+                  className="peer absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
+                />
+                <span className="pointer-events-none absolute inset-0 rounded-[4px] border-2 border-brand-300 bg-white transition-colors peer-checked:border-brand-600 peer-checked:bg-brand-600" />
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={3.5}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="pointer-events-none relative h-3 w-3 text-white opacity-0 transition-opacity peer-checked:opacity-100"
+                  aria-hidden="true"
+                >
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              </span>
+              이 콘텐츠는 AI를 사용해 제작되었습니다
+            </label>
+            {register.isError && (
+              <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
+                등록 실패: {register.error instanceof Error ? register.error.message : '알 수 없는 오류'}
+              </p>
+            )}
+            {register.isSuccess && (
+              <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+                등록되어 <b>검수 대기열</b>로 바로 제출되었습니다. <b>내 콘텐츠</b> 메뉴에서 진행 상태를 확인할 수 있어요.
+              </p>
+            )}
+            {hasPrimarySkill && scanFile.isPending && (
+              <p className="text-xs text-gray-400">보안검사 통과 후 등록할 수 있어요.</p>
+            )}
+            {hasPrimarySkill && scanFile.data?.hasBlocking && (
+              <p className="text-xs text-red-500">보안검사 차단 항목을 수정해야 등록할 수 있어요.</p>
+            )}
+          </div>
 
-        {/* 등록 버튼 — 흰 박스 밖, 맨 아래 중앙. 전체 폭은 아니고 텍스트·높이를 키운 CTA */}
-        <div className="flex justify-center">
+        {/* 하단 버튼 — 최종 제출 */}
+        <div className="mx-auto flex w-full max-w-lg justify-center">
           <button
             type="submit"
             disabled={register.isPending || !hasPrimarySkill || scanBlocked}
             /* 채도 높은 보라 단색 — 전역 그라디언트 규칙을 인라인으로 확실히 덮어 HTML 카드보다 도드라지게 */
             style={{ backgroundColor: '#5b4a9e' }}
-            className="rounded-2xl px-16 py-4 text-xl font-bold tracking-wide text-white shadow-card transition hover:brightness-110"
+            className="w-full max-w-[15.5rem] rounded-2xl py-4 text-xl font-bold tracking-wide text-white shadow-card transition hover:brightness-110"
           >
-            {register.isPending ? '등록 중…' : '등록하기'}
+            {register.isPending ? '제출 중…' : '최종 제출'}
           </button>
         </div>
       </form>
+
     </main>
   )
 }

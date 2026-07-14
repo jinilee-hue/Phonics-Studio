@@ -135,6 +135,7 @@ export function SkillCoursePicker({ skills, onSkillsChange, courseCode, onCourse
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="스킬 검색"
+                  style={{ borderRadius: '0.5rem' }}
                   className="w-40 rounded-lg border border-brand-200 py-1 pl-3 pr-8 text-xs outline-none focus:border-brand-500 sm:w-56"
                 />
                 <button
@@ -178,7 +179,7 @@ export function SkillCoursePicker({ skills, onSkillsChange, courseCode, onCourse
                           }}
                           onClick={() => (primarySkill ? addAdditional(o.code) : promotePrimary(o.code))}
                           title={o.code}
-                          className="cursor-grab rounded-full border border-brand-200 px-2.5 py-1 text-xs font-medium text-gray-600 transition hover:border-brand-400 hover:bg-brand-50 active:cursor-grabbing"
+                          className="cursor-grab rounded-lg border border-brand-200 px-2.5 py-1 text-xs font-medium text-gray-600 transition hover:border-brand-400 hover:bg-brand-50 active:cursor-grabbing"
                         >
                           + {o.label}
                         </button>
@@ -219,7 +220,7 @@ export function SkillCoursePicker({ skills, onSkillsChange, courseCode, onCourse
               >
                 {primarySkill ? (
                   <span
-                    className="inline-flex items-center gap-1 rounded-full bg-brand-600 px-2.5 py-1 text-xs font-semibold text-white"
+                    className="inline-flex items-center gap-1 rounded-lg bg-brand-600 px-2.5 py-1 text-xs font-semibold text-white"
                     title={primarySkill.skillCode}
                   >
                     {labelFor(primarySkill.skillCode)}
@@ -290,7 +291,7 @@ export function SkillCoursePicker({ skills, onSkillsChange, courseCode, onCourse
                   additionalSkills.map((s) => (
                     <span
                       key={s.skillCode}
-                      className="inline-flex items-center gap-1 rounded-full bg-brand-100 px-2.5 py-1 text-xs font-medium text-brand-700"
+                      className="inline-flex items-center gap-1 rounded-lg bg-brand-100 px-2.5 py-1 text-xs font-medium text-brand-700"
                       title={s.skillCode}
                     >
                       {labelFor(s.skillCode)}

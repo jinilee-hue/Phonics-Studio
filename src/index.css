@@ -61,7 +61,6 @@ body {
   background-color: var(--brand-soft);
   /* 배경 이미지(studio-bg.webp)는 assets에 보존하되 화면에는 렌더링하지 않음. 그라디언트 틴트만 유지 */
   background-image:
-    radial-gradient(circle at 18% 16%, rgb(255 209 102 / 0.2), transparent 24rem),
     linear-gradient(90deg, rgb(var(--page-tint) / 0.18), rgb(var(--page-tint) / 0.03));
   background-attachment: fixed;
   background-position: center top;
@@ -485,20 +484,32 @@ main:not(.auth-shell) .overflow-hidden.rounded-2xl.bg-white {
 }
 
 main:not(.auth-shell) table thead tr {
-  background: rgb(246 243 255 / 1);
+  background: var(--brand-strong);
 }
 
 main:not(.auth-shell) table thead th {
-  color: var(--brand-strong);
-  font-weight: 700;
+  color: #fff;
+  font-weight: 600;
+  text-align: center;
+  /* 헤더 폰트를 본문(text-xs 12px)보다 2px 키워 14px로 통일 */
+  font-size: 0.875rem;
 }
 
 main:not(.auth-shell) table tbody td {
   color: var(--ink);
 }
 
-main:not(.auth-shell) table tbody tr:nth-child(even) {
-  background: rgb(250 248 255 / 0.72);
+main:not(.auth-shell) table tbody tr {
+  background: #fff;
+}
+
+/* 수치(number) 입력 스피너 — hover 없이 항상 표시 + 옅은 보라 톤 */
+main:not(.auth-shell) input[type='number'] {
+  accent-color: #b3a3e0;
+}
+main:not(.auth-shell) input[type='number']::-webkit-inner-spin-button,
+main:not(.auth-shell) input[type='number']::-webkit-outer-spin-button {
+  opacity: 1; /* 기본은 hover/focus 시에만 노출 → 항상 보이게 */
 }
 
 main:not(.auth-shell) button.bg-white.rounded-full,
@@ -556,4 +567,63 @@ main:not(.auth-shell) .bg-brand-50\/40 {
     width: 100%;
     justify-self: stretch;
   }
+}
+
+/* 플로팅 토스트 등장 — 살짝 아래에서 올라오며 페이드인 */
+@keyframes toastIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 6px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+/* 포인트 동전 반짝임 — 코인 모양 마스크 위로 빛 밴드가 훑고 지나감(+짧은 정지) */
+@keyframes coinShine {
+  0% {
+    background-position: 220% 0;
+  }
+  55%,
+  100% {
+    background-position: -120% 0;
+  }
+}
+
+/* 몬스터 눈 깜박임 — 눈 감은 프레임을 짧게 노출(2회 깜박) */
+@keyframes monsterBlink {
+  0%, 88%, 100% { opacity: 0; }
+  90%, 92% { opacity: 1; }
+  94% { opacity: 0; }
+  96%, 98% { opacity: 1; }
+}
+
+/* 모달 스크롤바 — 얇고 은은한 브랜드 톤(기본 두꺼운 시스템 스크롤바 대체).
+   ⚠ 표준 scrollbar-width/scrollbar-color를 지정하면 최신 Chromium이 그걸 우선해
+   ::-webkit-scrollbar 커스텀(화살표 버튼 제거)을 무시한다 → Windows에서 위·아래 화살표가 남음.
+   따라서 표준 속성은 쓰지 않고 webkit 커스텀만 사용해 화살표 없는 스크롤바를 만든다.
+   (Firefox는 ::-webkit 미지원이나 기본 스크롤바에 화살표가 없어 문제 없음) */
+.modal-scroll::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+/* 위·아래 화살표 버튼 제거 */
+.modal-scroll::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+.modal-scroll::-webkit-scrollbar-track {
+  background: transparent;
+  /* 스크롤바 시작·끝점에 위·아래 20px 여백 */
+  margin: 20px 0;
+}
+.modal-scroll::-webkit-scrollbar-thumb {
+  border-radius: 9999px;
+  background-color: rgb(111 91 200 / 0.35);
+}
+.modal-scroll::-webkit-scrollbar-thumb:hover {
+  background-color: rgb(111 91 200 / 0.55);
 }

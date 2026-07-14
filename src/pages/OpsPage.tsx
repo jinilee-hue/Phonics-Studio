@@ -8,9 +8,9 @@ import { PreviewModal } from '../components/PreviewModal'
 const STATUS_FILTERS: { value: Status; label: string }[] = [
   { value: 'draft', label: '작성 중' },
   { value: 'in_review', label: '검수 대기' },
-  { value: 'approved', label: '승인됨' },
-  { value: 'rejected', label: '반려됨' },
-  { value: 'published', label: '게시됨' },
+  { value: 'approved', label: '승인완료' },
+  { value: 'rejected', label: '반려' },
+  { value: 'published', label: '게시' },
   { value: 'suspended', label: '게시중단' },
   { value: 'archived', label: '보관됨' },
 ]
@@ -95,7 +95,7 @@ export function OpsPage() {
   return (
     <main className="mx-auto max-w-6xl space-y-8 px-4 py-8">
       <section>
-        <h2 className="mb-1 text-lg font-bold text-brand-800">게시 대기 ({approved.length})</h2>
+        <h2 className="mb-1 text-[22px] font-bold text-brand-800">게시 대기 ({approved.length})</h2>
         <p className="mb-4 text-sm text-gray-600">
           검토자가 승인한 콘텐츠입니다. 게시하면 학생(Play 서비스)에게 공개됩니다.
         </p>
@@ -114,16 +114,27 @@ export function OpsPage() {
               <span className="ml-auto flex flex-wrap gap-2 [&>button]:shrink-0 [&>button]:whitespace-nowrap">
                 <button
                   onClick={() => setPreview(c)}
-                  className="rounded-lg border border-brand-200 px-3 py-1.5 text-xs font-semibold text-brand-600 hover:bg-brand-50"
+                  className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-brand-200 px-5 py-2.5 text-sm font-semibold text-brand-600 hover:bg-brand-50"
                 >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true">
+                    <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" />
+                    <circle cx="12" cy="12" r="3" />
+                  </svg>
                   미리보기
                 </button>
                 <button
                   onClick={() => publish.mutate(c.id)}
                   disabled={publish.isPending}
-                  className="rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-brand-700 disabled:opacity-50"
+                  style={{ backgroundColor: '#6f5bc8', borderRadius: '0.5rem' }}
+                  className="inline-flex items-center justify-center gap-1.5 px-5 py-2.5 text-sm font-bold text-white transition hover:brightness-110 disabled:opacity-50"
                 >
-                  🚀 게시
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true">
+                    <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z" />
+                    <path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z" />
+                    <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0" />
+                    <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5" />
+                  </svg>
+                  게시
                 </button>
               </span>
             </div>
@@ -144,7 +155,7 @@ export function OpsPage() {
 
       <section>
         <div className="mb-3">
-          <h2 className="mb-3 text-lg font-bold text-brand-800">전체 콘텐츠</h2>
+          <h2 className="mb-3 text-[22px] font-bold text-brand-800">전체 콘텐츠</h2>
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
@@ -173,7 +184,7 @@ export function OpsPage() {
             ))}
           </div>
         </div>
-        <div className="overflow-x-auto rounded-2xl bg-white shadow-card">
+        <div className="overflow-x-auto">
           <table className="w-full min-w-[720px] text-sm">
             <thead>
               <tr className="border-b border-brand-200 text-left text-xs font-semibold text-brand-800">
@@ -191,22 +202,22 @@ export function OpsPage() {
                 <tr key={c.id} className="border-b border-brand-50 last:border-0">
                   <td className="px-4 py-3 font-semibold text-brand-900">{c.title}</td>
                   <td className="px-4 py-3">
-                    <div className="flex flex-wrap gap-1">
+                    <div className="flex flex-wrap justify-center gap-1">
                       <KindBadge kind={c.kind} />
                       {c.usesAi && <AiBadge />}
                     </div>
                   </td>
-                  <td className="px-4 py-3"><StatusBadge status={c.status} /></td>
-                  <td className="whitespace-nowrap px-4 py-3 text-gray-700">{c.ownerName}</td>
-                  <td className="whitespace-nowrap px-4 py-3 text-xs font-medium tabular-nums text-gray-600">{formatDate(c.submittedAt)}</td>
-                  <td className="whitespace-nowrap px-4 py-3 text-xs font-medium tabular-nums text-gray-600">{formatDate(c.publishedAt)}</td>
+                  <td className="px-4 py-3 text-center"><StatusBadge status={c.status} /></td>
+                  <td className="whitespace-nowrap px-4 py-3 text-center text-gray-700">{c.ownerName}</td>
+                  <td className="whitespace-nowrap px-4 py-3 text-center text-xs font-medium tabular-nums text-gray-600">{formatDate(c.submittedAt)}</td>
+                  <td className="whitespace-nowrap px-4 py-3 text-center text-xs font-medium tabular-nums text-gray-600">{formatDate(c.publishedAt)}</td>
                   <td className="px-4 py-3">
-                    <div className="flex flex-wrap gap-1.5">
+                    <div className="flex flex-wrap justify-center gap-1.5">
                       {(c.status === 'approved' || c.status === 'rejected') && (
                         <button
                           onClick={() => reset.mutate(c.id)}
                           disabled={reset.isPending}
-                          className="rounded-lg border border-amber-300 px-2.5 py-1 text-xs font-semibold text-amber-700 hover:bg-amber-50 disabled:opacity-50"
+                          className="rounded-lg border border-brand-200 px-2.5 py-1 text-xs font-semibold text-brand-600 hover:bg-brand-50 disabled:opacity-50"
                           title="승인/반려 판정을 취소하고 검수 대기로 되돌립니다"
                         >
                           되돌리기
@@ -215,7 +226,7 @@ export function OpsPage() {
                       {c.status === 'published' && (
                         <button
                           onClick={() => setSuspendTarget(c)}
-                          className="rounded-lg border border-orange-300 px-2.5 py-1 text-xs font-semibold text-orange-700 hover:bg-orange-50"
+                          className="rounded-lg border border-brand-200 px-2.5 py-1 text-xs font-semibold text-brand-600 hover:bg-brand-50"
                           title="게시본을 긴급 철회합니다(카탈로그에서 즉시 제외)"
                         >
                           게시중단
@@ -225,7 +236,7 @@ export function OpsPage() {
                         <button
                           onClick={() => restore.mutate(c.id)}
                           disabled={restore.isPending}
-                          className="rounded-lg border border-emerald-300 px-2.5 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 disabled:opacity-50"
+                          className="rounded-lg border border-brand-200 px-2.5 py-1 text-xs font-semibold text-brand-600 hover:bg-brand-50 disabled:opacity-50"
                           title="다시 게시합니다"
                         >
                           재게시
@@ -245,7 +256,7 @@ export function OpsPage() {
                         <button
                           onClick={() => restore.mutate(c.id)}
                           disabled={restore.isPending}
-                          className="rounded-lg border border-emerald-300 px-2.5 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 disabled:opacity-50"
+                          className="rounded-lg border border-brand-200 px-2.5 py-1 text-xs font-semibold text-brand-600 hover:bg-brand-50 disabled:opacity-50"
                           title="보관을 해제하고 검수 대기로 되돌립니다"
                         >
                           복구
@@ -299,7 +310,7 @@ function SuspendModal({
         className="w-full max-w-md rounded-2xl bg-white p-5 shadow-modal"
         onClick={(e) => e.stopPropagation()}
       >
-        <h3 className="mb-2 text-base font-bold text-brand-800">게시중단 — {content.title}</h3>
+        <h3 className="mb-2 text-lg font-bold text-brand-800">게시중단 — {content.title}</h3>
         <p className="mb-3 text-sm text-gray-500">
           게시본을 긴급 철회합니다. 카탈로그에서 즉시 제외되며, 사유는 감사 이력에 남습니다.
         </p>

@@ -66,13 +66,17 @@ export function PreviewModal({ content, onClose }: { content: Content; onClose: 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
       <div
-        className="flex max-h-[90vh] w-full max-w-5xl flex-col overflow-y-auto rounded-2xl bg-white p-5 shadow-modal"
+        className="modal-scroll flex max-h-[90vh] w-full max-w-5xl flex-col overflow-y-auto rounded-2xl bg-white p-5 shadow-modal"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-lg font-bold text-brand-800">미리보기 — {content.title}</h2>
-          <button onClick={onClose} className="rounded-lg px-2 py-1 text-gray-400 hover:bg-gray-100">
-            ✕ 닫기
+          <button
+            onClick={onClose}
+            aria-label="닫기"
+            className="grid h-8 w-8 place-items-center rounded-lg text-gray-400 hover:bg-gray-100"
+          >
+            ✕
           </button>
         </div>
 
@@ -82,9 +86,10 @@ export function PreviewModal({ content, onClose }: { content: Content; onClose: 
               <button
                 key={v.id}
                 onClick={() => setViewport(v.id)}
+                style={viewport === v.id ? { backgroundColor: '#5b4a9e' } : undefined}
                 className={`rounded-lg border px-3 py-1.5 text-xs font-semibold ${
                   viewport === v.id
-                    ? 'border-brand-600 bg-brand-600 text-white'
+                    ? 'border-brand-700 text-white'
                     : 'border-brand-200 text-brand-600 hover:bg-brand-50'
                 }`}
               >

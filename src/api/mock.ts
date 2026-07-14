@@ -35,12 +35,6 @@ export function isAllAccess(me: User | null | undefined): boolean {
 // shape-correct 최소 데이터. 레이아웃/오버플로 확인에 충분하도록 목록은 2~3건씩,
 // Record 키(상태 버킷·루브릭 차원 등)는 실제 키를 채워 차트·막대가 렌더되게 한다.
 
-const PLACEHOLDER_IMG =
-  'data:image/svg+xml;utf8,' +
-  encodeURIComponent(
-    '<svg xmlns="http://www.w3.org/2000/svg" width="240" height="180"><rect width="100%" height="100%" fill="#e5e7eb"/><text x="50%" y="50%" font-size="16" fill="#6b7280" text-anchor="middle" dominant-baseline="middle">리소스</text></svg>',
-  )
-
 /** 5차원 루브릭 차원 코드→라벨 (통계·설정·파이프라인 공용) */
 const DIMENSIONS: Record<string, string> = {
   edu: '교육성',
@@ -61,11 +55,31 @@ const SKILLS: SkillOption[] = [
   { code: 'BL-CR', label: '자음군 cr', domainLabel: '자음' },
 ]
 
+/** 디자인 모드 전용 — 콘텐츠 id별 목 썸네일(Phonics-Playground에서 가져와 public/mock-thumbs 배치).
+ * 프로덕션에선 undefined를 반환해 실제 thumb 엔드포인트로 폴백한다. */
+const MOCK_THUMBS: Record<number, string> = {
+  1: '/mock-thumbs/phonics-thumb-01-alphabet-sound-match.png',
+  2: '/mock-thumbs/phonics-thumb-14-cvc-build.png',
+  3: '/mock-thumbs/phonics-thumb-05-phonics-story-video.png',
+  4: '/mock-thumbs/phonics-thumb-13-letter-case-match.png',
+  5: '/mock-thumbs/phonics-thumb-17-external-game-link.png',
+  6: '/mock-thumbs/phonics-thumb-16-sight-word-flash.png',
+  7: '/mock-thumbs/phonics-thumb-03-consonant-song.png',
+  8: '/mock-thumbs/phonics-thumb-02-short-vowel-a-fishing.png',
+  9: '/mock-thumbs/phonics-thumb-06-magic-e-long-vowels.png',
+  10: '/mock-thumbs/phonics-thumb-04-rhyming-word-sounds.png',
+  14: '/mock-thumbs/phonics-thumb-07-digraph-quiz.png',
+  15: '/mock-thumbs/phonics-thumb-08-sight-word-speedrun.png',
+}
+export function mockThumb(id: number): string | undefined {
+  return DESIGN_MODE ? MOCK_THUMBS[id] : undefined
+}
+
 function content(id: number, over: Partial<Content>): Content {
   return {
     id,
     title: `샘플 콘텐츠 ${id}`,
-    description: '디자인 미리보기용 샘플 콘텐츠입니다.',
+    description: '',
     kind: 'html',
     status: 'draft',
     entryPath: 'index.html',
@@ -75,7 +89,7 @@ function content(id: number, over: Partial<Content>): Content {
     rejectReason: null,
     gradeBand: '초1-2',
     courseCode: 'PK-A1',
-    hasThumb: false,
+    hasThumb: MOCK_THUMBS[id] !== undefined,
     skills: [{ skillCode: 'SH-SE', isPrimary: true }],
     usesAi: false,
     createdAt: '2026-07-01T09:00:00Z',
@@ -86,7 +100,7 @@ function content(id: number, over: Partial<Content>): Content {
 }
 
 const CONTENTS: Content[] = [
-  content(1, { status: 'draft', title: '초안 게임' }),
+  content(1, { status: 'in_review', title: '초안 게임', submittedAt: '2026-07-01T10:00:00Z' }),
   content(2, { status: 'in_review', title: '검수중 게임', kind: 'zip', submittedAt: '2026-07-02T10:00:00Z' }),
   content(3, { status: 'rejected', title: '반려 게임', kind: 'video', rejectReason: '음성 파일이 누락되었습니다.' }),
   content(4, { status: 'approved', title: '승인 게임', submittedAt: '2026-07-03T10:00:00Z' }),
@@ -101,6 +115,41 @@ const CONTENTS: Content[] = [
     publishedAt: '2026-07-04T10:00:00Z',
   }),
   content(6, { status: 'suspended', title: '게시중단 게임', publishedAt: '2026-07-04T10:00:00Z' }),
+  content(7, {
+    status: 'published',
+    title: '파닉스 송 — 자음편',
+    kind: 'video',
+    skills: [{ skillCode: 'BL-CR', isPrimary: true }],
+    submittedAt: '2026-07-02T09:00:00Z',
+    publishedAt: '2026-07-03T09:00:00Z',
+  }),
+  content(8, {
+    status: 'published',
+    title: '단모음 a 낚시',
+    kind: 'html',
+    skills: [{ skillCode: 'VW-A', isPrimary: true }],
+    submittedAt: '2026-07-02T09:30:00Z',
+    publishedAt: '2026-07-03T11:00:00Z',
+  }),
+  content(9, {
+    status: 'published',
+    title: '장모음 매직 e',
+    kind: 'zip',
+    usesAi: true,
+    skills: [{ skillCode: 'SH-SE', isPrimary: true }],
+    submittedAt: '2026-07-01T09:00:00Z',
+    publishedAt: '2026-07-02T09:00:00Z',
+  }),
+  content(10, {
+    status: 'published',
+    title: '라임 단어 찾기',
+    kind: 'html',
+    skills: [{ skillCode: 'VW-A', isPrimary: true }],
+    submittedAt: '2026-07-02T08:00:00Z',
+    publishedAt: '2026-07-03T08:00:00Z',
+  }),
+  content(14, { status: 'approved', title: '이중자음 퀴즈', kind: 'zip', submittedAt: '2026-07-04T09:00:00Z' }),
+  content(15, { status: 'in_review', title: '사이트워드 스피드런', kind: 'html', submittedAt: '2026-07-02T11:00:00Z' }),
 ]
 
 const QUEUE: Content[] = [
@@ -110,9 +159,13 @@ const QUEUE: Content[] = [
 ]
 
 const RESOURCES: Resource[] = [
-  { id: 1, title: '고양이 일러스트', kind: 'image', isPublic: true, ownerId: -1, ownerName: '디자인', imageUrl: PLACEHOLDER_IMG, createdAt: '2026-07-01T09:00:00Z' },
-  { id: 2, title: '별 아이콘', kind: 'icon', isPublic: false, ownerId: -1, ownerName: '디자인', imageUrl: PLACEHOLDER_IMG, createdAt: '2026-07-02T09:00:00Z' },
-  { id: 3, title: '배경 이미지', kind: 'image', isPublic: true, ownerId: -1, ownerName: '디자인', imageUrl: PLACEHOLDER_IMG, createdAt: '2026-07-03T09:00:00Z' },
+  { id: 1, title: '고양이 일러스트', kind: 'image', isPublic: true, ownerId: -1, ownerName: '디자인', imageUrl: '/resources/sample-cat-illustration.png', createdAt: '2026-07-01T09:00:00Z' },
+  { id: 2, title: '별 아이콘', kind: 'icon', isPublic: false, ownerId: -1, ownerName: '디자인', imageUrl: '/resources/sample-star-icon.png', createdAt: '2026-07-02T09:00:00Z' },
+  { id: 3, title: '배경 이미지', kind: 'image', isPublic: true, ownerId: -1, ownerName: '디자인', imageUrl: '/resources/sample-classroom-background.png', createdAt: '2026-07-03T09:00:00Z' },
+  { id: 4, title: '몬스터 캐릭터 · 신남', kind: 'image', isPublic: true, ownerId: -1, ownerName: '디자인', imageUrl: '/review-faces/character5.png', createdAt: '2026-07-04T09:00:00Z' },
+  { id: 5, title: '몬스터 캐릭터 · 하트', kind: 'image', isPublic: true, ownerId: -1, ownerName: '디자인', imageUrl: '/review-faces/character6.png', createdAt: '2026-07-05T09:00:00Z' },
+  { id: 6, title: '몬스터 캐릭터 · 고민', kind: 'icon', isPublic: false, ownerId: -1, ownerName: '디자인', imageUrl: '/review-faces/character1.png', createdAt: '2026-07-06T09:00:00Z' },
+  { id: 7, title: '몬스터 캐릭터 · 곤란', kind: 'image', isPublic: true, ownerId: -1, ownerName: '디자인', imageUrl: '/review-faces/character3.png', createdAt: '2026-07-07T09:00:00Z' },
 ]
 
 const POINTS: PointsResult = {
@@ -132,7 +185,7 @@ const RUBRIC: RubricConfig = {
 }
 
 const STATS: Stats = {
-  byStatus: { draft: 4, in_review: 3, approved: 5, rejected: 2, published: 8, suspended: 1, archived: 2 },
+  byStatus: { in_review: 7, approved: 5, rejected: 2, published: 8, suspended: 1, archived: 2 },
   totalContents: 25,
   totalCreators: 6,
   approvalRate: 0.72,
@@ -164,8 +217,12 @@ const PLAY_STATS: PlayStats = {
     totalRatings: 210,
   },
   topContents: [
+    { contentId: 7, uses: 512, completions: 360, ratingAvg: 4.8, ratingCount: 96, title: '파닉스 송 — 자음편' },
+    { contentId: 8, uses: 468, completions: 320, ratingAvg: 4.7, ratingCount: 74, title: '단모음 a 낚시' },
     { contentId: 5, uses: 420, completions: 300, ratingAvg: 4.5, ratingCount: 88, title: '게시 게임' },
+    { contentId: 9, uses: 342, completions: 210, ratingAvg: 4.6, ratingCount: 52, title: '장모음 매직 e' },
     { contentId: 4, uses: 260, completions: 180, ratingAvg: 4.1, ratingCount: 45, title: '승인 게임' },
+    { contentId: 10, uses: 305, completions: 220, ratingAvg: 4.4, ratingCount: 61, title: '라임 단어 찾기' },
   ],
 }
 

@@ -68,9 +68,19 @@ export function PipelinePanel({ contentId }: { contentId: number }) {
           type="button"
           onClick={run}
           disabled={running}
-          className="rounded-lg bg-brand-700 px-3 py-1.5 text-xs font-bold text-white hover:bg-brand-800 disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 rounded-lg bg-brand-700 px-3 py-1.5 text-xs font-bold text-white hover:bg-brand-800 disabled:opacity-50"
         >
-          {running ? '검수 진행 중…' : '🔎 자동검수 파이프라인 실행'}
+          {running ? (
+            '검수 진행 중…'
+          ) : (
+            <>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5" aria-hidden="true">
+                <circle cx="11" cy="11" r="7" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+              자동검수 파이프라인 실행
+            </>
+          )}
         </button>
         {overall && (
           <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${REC_STYLE[overall.recommendation].cls}`}>
