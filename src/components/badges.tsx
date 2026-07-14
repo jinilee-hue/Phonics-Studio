@@ -8,7 +8,7 @@ const STATUS_STYLE: Record<Status, { label: string; cls: string; text: string; l
   approved: { label: '승인완료', cls: 'bg-sky-100 text-sky-700', text: 'text-emerald-600', line: 'decoration-emerald-500' },
   rejected: { label: '반려', cls: 'bg-red-100 text-red-700', text: 'text-red-700', line: 'decoration-red-500' },
   published: { label: 'OPEN', cls: 'bg-emerald-100 text-emerald-700', text: 'text-gray-900', line: 'decoration-gray-400' },
-  suspended: { label: '게시중단', cls: 'bg-orange-100 text-orange-700', text: 'text-red-700', line: 'decoration-red-500' },
+  suspended: { label: '게시중단', cls: 'bg-orange-100 text-orange-700', text: 'text-orange-600', line: 'decoration-orange-500' },
   archived: { label: '보관됨', cls: 'bg-slate-200 text-slate-600', text: 'text-slate-600', line: 'decoration-slate-400' },
 }
 

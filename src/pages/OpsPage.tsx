@@ -6,11 +6,10 @@ import { AiBadge, KindBadge, StatusBadge } from '../components/badges'
 import { PreviewModal } from '../components/PreviewModal'
 
 const STATUS_FILTERS: { value: Status; label: string }[] = [
-  { value: 'draft', label: '작성 중' },
   { value: 'in_review', label: '검수 대기' },
   { value: 'approved', label: '승인완료' },
   { value: 'rejected', label: '반려' },
-  { value: 'published', label: '게시' },
+  { value: 'published', label: 'OPEN' },
   { value: 'suspended', label: '게시중단' },
   { value: 'archived', label: '보관됨' },
 ]
@@ -217,18 +216,27 @@ export function OpsPage() {
                         <button
                           onClick={() => reset.mutate(c.id)}
                           disabled={reset.isPending}
-                          className="rounded-lg border border-brand-200 px-2.5 py-1 text-xs font-semibold text-brand-600 hover:bg-brand-50 disabled:opacity-50"
+                          className="inline-flex items-center gap-1 rounded-lg border border-brand-200 px-2.5 py-1 text-xs font-semibold text-brand-600 hover:bg-brand-50 disabled:opacity-50"
                           title="승인/반려 판정을 취소하고 검수 대기로 되돌립니다"
                         >
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5" aria-hidden="true">
+                            <polyline points="1 4 1 10 7 10" />
+                            <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+                          </svg>
                           되돌리기
                         </button>
                       )}
                       {c.status === 'published' && (
                         <button
                           onClick={() => setSuspendTarget(c)}
-                          className="rounded-lg border border-brand-200 px-2.5 py-1 text-xs font-semibold text-brand-600 hover:bg-brand-50"
+                          className="inline-flex items-center gap-1 rounded-lg border border-orange-300 px-2.5 py-1 text-xs font-semibold text-orange-700 hover:bg-orange-50"
                           title="게시본을 긴급 철회합니다(카탈로그에서 즉시 제외)"
                         >
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5" aria-hidden="true">
+                            <circle cx="12" cy="12" r="10" />
+                            <line x1="10" y1="9" x2="10" y2="15" />
+                            <line x1="14" y1="9" x2="14" y2="15" />
+                          </svg>
                           게시중단
                         </button>
                       )}
@@ -236,9 +244,13 @@ export function OpsPage() {
                         <button
                           onClick={() => restore.mutate(c.id)}
                           disabled={restore.isPending}
-                          className="rounded-lg border border-brand-200 px-2.5 py-1 text-xs font-semibold text-brand-600 hover:bg-brand-50 disabled:opacity-50"
+                          className="inline-flex items-center gap-1 rounded-lg border border-brand-200 px-2.5 py-1 text-xs font-semibold text-brand-600 hover:bg-brand-50 disabled:opacity-50"
                           title="다시 게시합니다"
                         >
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5" aria-hidden="true">
+                            <polyline points="23 4 23 10 17 10" />
+                            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+                          </svg>
                           재게시
                         </button>
                       )}
@@ -246,9 +258,14 @@ export function OpsPage() {
                         <button
                           onClick={() => archive.mutate(c.id)}
                           disabled={archive.isPending}
-                          className="rounded-lg border border-slate-300 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+                          className="inline-flex items-center gap-1 rounded-lg border border-slate-300 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50"
                           title="목록에서 내려 보관합니다"
                         >
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5" aria-hidden="true">
+                            <polyline points="21 8 21 21 3 21 3 8" />
+                            <rect x="1" y="3" width="22" height="5" />
+                            <line x1="10" y1="12" x2="14" y2="12" />
+                          </svg>
                           보관
                         </button>
                       )}
@@ -256,9 +273,13 @@ export function OpsPage() {
                         <button
                           onClick={() => restore.mutate(c.id)}
                           disabled={restore.isPending}
-                          className="rounded-lg border border-brand-200 px-2.5 py-1 text-xs font-semibold text-brand-600 hover:bg-brand-50 disabled:opacity-50"
+                          className="inline-flex items-center gap-1 rounded-lg border border-brand-200 px-2.5 py-1 text-xs font-semibold text-brand-600 hover:bg-brand-50 disabled:opacity-50"
                           title="보관을 해제하고 검수 대기로 되돌립니다"
                         >
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5" aria-hidden="true">
+                            <polyline points="1 4 1 10 7 10" />
+                            <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+                          </svg>
                           복구
                         </button>
                       )}
