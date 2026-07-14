@@ -350,8 +350,7 @@ export function OpsPage() {
                         <button
                           onClick={() => archive.mutate(c.id)}
                           disabled={archive.isPending}
-                          style={{ backgroundColor: '#9ca3af' }}
-                          className="grid h-8 w-8 place-items-center rounded-lg text-white transition hover:brightness-110 disabled:opacity-50"
+                          className="grid h-8 w-8 place-items-center rounded-lg border border-brand-200 text-brand-600 hover:bg-brand-50 disabled:opacity-50"
                           title="보관 — 목록에서 내려 보관합니다"
                           aria-label="보관"
                         >
