@@ -72,8 +72,11 @@ const MOCK_THUMBS: Record<number, string> = {
   14: '/mock-thumbs/phonics-thumb-07-digraph-quiz.png',
   15: '/mock-thumbs/phonics-thumb-08-sight-word-speedrun.png',
 }
+/** public/ 절대경로에 배포 base(예: /Phonics-Studio/)를 붙인다. dev(base '/')에선 그대로. */
+const asset = (p: string) => import.meta.env.BASE_URL.replace(/\/$/, '') + p
+
 export function mockThumb(id: number): string | undefined {
-  return DESIGN_MODE ? MOCK_THUMBS[id] : undefined
+  return DESIGN_MODE && MOCK_THUMBS[id] ? asset(MOCK_THUMBS[id]) : undefined
 }
 
 function content(id: number, over: Partial<Content>): Content {
@@ -300,7 +303,7 @@ const REVIEW_RATINGS = [5, 4, 5, 4, 5, 3, 5, 4, 4, 5]
 const REVIEW_END_MS = Date.parse('2026-07-14T00:00:00Z')
 const REVIEW_POOL: ContentReview[] = Array.from({ length: 24 }, (_, i) => ({
   nickname: `${REVIEW_NICKS[i % REVIEW_NICKS.length]} 어린이`,
-  avatarUrl: REVIEW_AVATARS[i % REVIEW_AVATARS.length],
+  avatarUrl: asset(REVIEW_AVATARS[i % REVIEW_AVATARS.length]),
   rating: REVIEW_RATINGS[i % REVIEW_RATINGS.length],
   tag: REVIEW_TAGS[i % REVIEW_TAGS.length],
   createdAt: new Date(REVIEW_END_MS - i * 86_400_000).toISOString(),
@@ -324,7 +327,10 @@ export function mockRequest(method: string, rawPath: string): unknown {
   if (path === '/api/stats/sync-usage-rewards') return { syncedContents: 3, settledContents: 2, newlyAwarded: 1 }
   if (path === '/api/review/queue') return QUEUE
   if (path === '/api/review/bulk') return { results: [], okCount: 0, failCount: 0 }
-  if (path === '/api/resources') return method === 'GET' ? RESOURCES : RESOURCES[0]
+  if (path === '/api/resources') {
+    const withBase = (r: Resource) => ({ ...r, imageUrl: asset(r.imageUrl) })
+    return method === 'GET' ? RESOURCES.map(withBase) : withBase(RESOURCES[0])
+  }
 
   // 콘텐츠 컬렉션 및 등록 전 처리
   if (path === '/api/contents/mine') return CONTENTS
